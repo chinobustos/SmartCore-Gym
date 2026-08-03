@@ -69,7 +69,7 @@ export default function ClassDetailPage() {
 
   const handleReserve = async (memberId: string) => {
     try {
-      await bookClass({ classId: gymClass.id, memberId, date: new Date().toISOString() });
+      await bookClass({ classId: gymClass.id, memberId, memberName: members.find(m => m.id === memberId)?.name ?? '', bookingDate: new Date().toISOString(), status: 'confirmed' });
       toast.success('Socio inscrito');
     } catch (e) {
       toast.error('Error al inscribir');

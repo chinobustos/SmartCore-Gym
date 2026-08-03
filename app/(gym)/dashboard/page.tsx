@@ -47,7 +47,8 @@ export default function DashboardPage() {
     .filter(p => p.status === 'paid')
     .reduce((acc, p) => acc + p.amount, 0);
 
-  const todayAttendance = attendance.filter(a => a.date === '2024-04-13').length;
+  // Ensure zero values when no data
+  const todayAttendanceCount = attendance ? attendance.filter(a => a.date === '2024-04-13').length : 0;
 
 
   const recentActivity = [
@@ -84,7 +85,7 @@ export default function DashboardPage() {
         {[
           { title: "Socios Activos", value: String(activeMembers), icon: Users, color: "text-emerald-400", bg: "bg-emerald-400/10", change: "8.2%", positive: true },
           { title: "Ingresos del Mes", value: formatCurrency(monthlyRevenue).replace(",00", ""), icon: DollarSign, color: "text-blue-400", bg: "bg-blue-400/10", change: "12.5%", positive: true },
-          { title: "Asistencia Hoy", value: String(todayAttendance), icon: Activity, color: "text-amber-400", bg: "bg-amber-400/10", change: "5.1%", positive: true },
+          { title: "Asistencia Hoy", value: String(todayAttendanceCount), icon: Activity, color: "text-amber-400", bg: "bg-amber-400/10", change: "5.1%", positive: true },
           { title: "Pagos Vencidos", value: String(overduePayments), icon: AlertCircle, color: "text-red-400", bg: "bg-red-400/10", change: "2.0%", positive: false },
         ].map((stat, i) => (
           <motion.div key={i} variants={itemVariants}>
@@ -103,25 +104,30 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <motion.div variants={itemVariants} className="xl:col-span-2">
-          <AttendanceChart />
+          <AttendanceChart attendance={attendance} />
         </motion.div>
 
+        {/* Render recent activity section; show placeholder when no activity or no members */}
         <motion.div variants={itemVariants} className="gym-card p-5">
           <h3 className="font-semibold text-foreground mb-1">Actividad Reciente</h3>
           <p className="text-xs text-muted-foreground mb-4">Últimos eventos del sistema</p>
-          <div className="space-y-4">
-            {recentActivity.map((item, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="mt-0.5 p-1.5 rounded-lg bg-secondary flex-shrink-0">
-                  <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
+          {recentActivity.length > 0 ? (
+            <div className="space-y-4">
+              {recentActivity.map((item, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="mt-0.5 p-1.5 rounded-lg bg-secondary flex-shrink-0">
+                    <item.icon className={`w-3.5 h-3.5 ${item.color}`} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm text-foreground leading-snug">{item.text}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm text-foreground leading-snug">{item.text}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="p-8 text-center text-muted-foreground text-sm">No hay actividad reciente.</p>
+          )}
         </motion.div>
       </div>
 

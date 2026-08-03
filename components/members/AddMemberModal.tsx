@@ -52,6 +52,7 @@ export default function AddMemberModal({ onClose }: Props) {
         ...data,
         status: "active",
         avatar: initials,
+        autoRenew: false,
       });
 
       toast.success("Socio registrado con éxito");

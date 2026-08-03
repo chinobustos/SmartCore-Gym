@@ -12,6 +12,7 @@ export default function AttendancePage() {
   const { members, attendance, checkIn, isLoading } = useGym();
   const [search, setSearch] = useState('');
   const [activityCount, setActivityCount] = useState(0);
+  const [checkedIn, setCheckedIn] = useState<null | string>(null);
 
   if (isLoading) {
     return (
@@ -72,10 +73,14 @@ export default function AttendancePage() {
           />
         </div>
 
-        {checkedIn && (
+        {checkedIn ? (
           <div className="mt-4 flex items-center gap-3 p-4 bg-emerald-400/10 border border-emerald-400/30 rounded-xl">
             <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <p className="text-sm font-medium text-emerald-400">Check-in registrado exitosamente</p>
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center gap-3 p-4 bg-secondary/10 border border-border rounded-xl">
+            <p className="text-sm text-muted-foreground">No hay actividad de check-in.</p>
           </div>
         )}
 
@@ -120,38 +125,36 @@ export default function AttendancePage() {
         )}
       </div>
 
-      <div className="gym-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
-            <span className="font-semibold text-foreground">Asistencia de Hoy</span>
-          </div>
-          <span className="text-sm font-semibold text-primary">{todayAttendance.length} ingresos</span>
-        </div>
-        {todayAttendance.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No hay registros de asistencia para hoy.</div>
-        ) : (
-          <div className="divide-y divide-border/50">
-            {todayAttendance.map((record) => (
-              <div key={record.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-secondary/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                    {record.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{record.memberName}</p>
-                    <p className="text-xs text-muted-foreground">{record.memberPlan}</p>
-                  </div>
+          {todayAttendance.length > 0 && (
+            <div className="gym-card overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <span className="font-semibold text-foreground">Asistencia de Hoy</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-sm font-medium">{record.checkInTime}</span>
-                </div>
+                <span className="text-sm font-semibold text-primary">{todayAttendance.length} ingresos</span>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <div className="divide-y divide-border/50">
+                {todayAttendance.map((record) => (
+                  <div key={record.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-secondary/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                        {record.memberName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{record.memberName}</p>
+                        <p className="text-xs text-muted-foreground">{record.memberPlan}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span className="text-sm font-medium">{record.checkInTime}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
     </div>
   );
 }

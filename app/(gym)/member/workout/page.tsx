@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, Clock, Info, CheckCircle2, ChevronRight, History, Play, Pause, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { useRouter } from 'next/navigation';
+import MemberNavbar from '@/components/layout/MemberNavbar';
 
 const MOCK_EXERCISES = [
   {
@@ -88,7 +88,9 @@ export default function WorkoutView() {
         </Button>
       </div>
 
-      <Progress value={progress} className="h-1 mb-6" />
+      <div className="h-1 mb-6 w-full bg-secondary rounded-full overflow-hidden">
+        <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
+      </div>
 
       <AnimatePresence mode="wait">
         {!isResting ? (
@@ -227,5 +229,3 @@ export default function WorkoutView() {
     </div>
   );
 }
-
-import MemberNavbar from '@/components/layout/MemberNavbar';
