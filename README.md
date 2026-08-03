@@ -1,4 +1,4 @@
-# GymOS 🏋️‍♂️
+# Smart Core 🏋️‍♂️
 
 > **Sistema integral de gestión de gimnasios y centros de fitness.**
 
