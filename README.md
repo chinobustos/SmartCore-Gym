@@ -64,7 +64,7 @@ graph TD
 
 1. **Clonar el repositorio**
    ```bash
-   git clone https://github.com/chinobustos/GymOS.git
+   git clone https://github.com/chinobustos/SmartCore-Gym.git
    cd GymOS
    ```
 
