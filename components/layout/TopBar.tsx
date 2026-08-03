@@ -18,7 +18,7 @@ export default function TopBar() {
   const { globalSearch, setGlobalSearch } = useGym();
   const { user, logout } = useAuth();
   const pathname = usePathname();
-  const page = pageTitles[pathname] ?? { title: 'GymOS', subtitle: '' };
+  const page = pageTitles[pathname] ?? { title: 'Smart Core', subtitle: '' };
 
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-white sticky top-0 z-10 shadow-sm">

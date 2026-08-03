@@ -36,7 +36,7 @@ export default function LoginPage() {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <Dumbbell className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="text-2xl font-black tracking-tight text-foreground">GymOS</span>
+              <span className="text-2xl font-black tracking-tight text-foreground">Smart Core</span>
             </div>
             
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
@@ -62,7 +62,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@gymos.com"
+                  placeholder="admin@smartcore.com"
                   className="w-full px-4 py-3 rounded-xl border border-border bg-secondary/50 focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all text-sm"
                   required
                 />
@@ -104,7 +104,7 @@ export default function LoginPage() {
 
           <div className="pt-6 border-t border-border">
             <p className="text-xs text-center text-muted-foreground">
-              Datos de prueba: admin@gymos.com / admin123
+              Datos de prueba: admin@smartcore.com / admin123
             </p>
           </div>
         </div>
@@ -124,7 +124,7 @@ export default function LoginPage() {
             Lleva tu gimnasio al siguiente nivel.
           </h2>
           <p className="text-lg text-zinc-400 font-medium">
-            GymOS es la plataforma todo-en-uno que simplifica la gestión de socios, membresías, clases e inventario en un solo lugar.
+            Smart Core es la plataforma todo-en-uno que simplifica la gestión de socios, membresías, clases e inventario en un solo lugar.
           </p>
           
           <div className="mt-12 grid grid-cols-2 gap-6">

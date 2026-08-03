@@ -1,8 +1,8 @@
-# SmartCore Gym🏋️‍♂️
+# Smart Core 🏋️‍♂️
 
 > **Sistema integral de gestión de gimnasios y centros de fitness.**
 
-GymOS es una plataforma moderna diseñada para simplificar la administración de tu gimnasio. Desde el control de accesos y membresías hasta el análisis financiero y la gestión de inventario, GymOS centraliza todas las operaciones en un solo lugar con una interfaz intuitiva y rápida.
+Smart Core es una plataforma moderna diseñada para simplificar la administración de tu gimnasio. Desde el control de accesos y membresías hasta el análisis financiero y la gestión de inventario, Smart Core centraliza todas las operaciones en un solo lugar con una interfaz intuitiva y rápida.
 
 ## 🚀 Problemas que Soluciona
 
