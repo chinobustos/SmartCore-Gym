@@ -51,7 +51,7 @@ export default function DigitalCardPage() {
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <ShieldCheck className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-black text-xl tracking-tighter">Smart Core</span>
+              <span className="font-black text-xl tracking-tighter">SmartCore Gym</span>
             </div>
             <div className="w-12 h-10 rounded-lg bg-yellow-500/20 border border-yellow-500/20 flex items-center justify-center">
                 <div className="w-8 h-0.5 bg-yellow-500/40 mb-1" />

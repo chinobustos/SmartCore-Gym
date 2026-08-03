@@ -5,7 +5,7 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Smart Core - Sistema de Gestión de Gimnasios',
+  title: 'SmartCore Gym - Sistema de Gestión de Gimnasios',
   description: 'Plataforma profesional de gestión para gimnasios modernos',
 };
 

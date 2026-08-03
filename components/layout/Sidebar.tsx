@@ -34,7 +34,7 @@ export default function Sidebar() {
         </div>
         {!sidebarCollapsed && (
           <div>
-            <span className="font-bold text-foreground text-lg leading-none">Smart Core</span>
+            <span className="font-bold text-foreground text-lg leading-none">SmartCore Gym</span>
             <p className="text-[10px] text-muted-foreground leading-none mt-0.5">Pro Edition</p>
           </div>
         )}

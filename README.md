@@ -1,8 +1,8 @@
-# Smart Core 🏋️‍♂️
+# SmartCore Gym 🏋️‍♂️
 
 > **Sistema integral de gestión de gimnasios y centros de fitness.**
 
-Smart Core es una plataforma moderna diseñada para simplificar la administración de tu gimnasio. Desde el control de accesos y membresías hasta el análisis financiero y la gestión de inventario, Smart Core centraliza todas las operaciones en un solo lugar con una interfaz intuitiva y rápida.
+SmartCore Gym es una plataforma moderna diseñada para simplificar la administración de tu gimnasio. Desde el control de accesos y membresías hasta el análisis financiero y la gestión de inventario, SmartCore Gym centraliza todas las operaciones en un solo lugar con una interfaz intuitiva y rápida.
 
 ## 🚀 Problemas que Soluciona
 
