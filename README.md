@@ -1,4 +1,4 @@
-# Smart Core 🏋️‍♂️
+# SmartCore Gym🏋️‍♂️
 
 > **Sistema integral de gestión de gimnasios y centros de fitness.**
 
