@@ -2,8 +2,8 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import type { Member, Payment, InventoryItem, AttendanceRecord, GymClass, Booking, Transaction } from '@/lib/types';
-import { mockMembers, mockPayments, mockInventory, mockAttendance, mockClasses, mockBookings, mockTransactions } from '@/lib/data/mockData';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface GymContextType {
   sidebarCollapsed: boolean;
@@ -27,13 +27,13 @@ interface GymContextType {
   addClass: (gymClass: Omit<GymClass, 'id'>) => Promise<void>;
   toggleAutoRenew: (memberId: string) => Promise<void>;
   globalSearch: string;
-
   setGlobalSearch: (q: string) => void;
 }
 
 const GymContext = createContext<GymContextType | null>(null);
 
 export function GymProvider({ children }: { children: React.ReactNode }) {
+  const { gymId } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
@@ -48,14 +48,33 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Intentar cargar de Supabase
-      const { data: membersData } = await supabase.from('members').select('*');
-      const { data: paymentsData } = await supabase.from('payments').select('*');
-      const { data: inventoryData } = await supabase.from('inventory').select('*');
-      const { data: attendanceData } = await supabase.from('attendance').select('*').order('checkInTime', { ascending: false });
-      const { data: classesData } = await supabase.from('classes').select('*');
-      const { data: bookingsData } = await supabase.from('bookings').select('*');
-      const { data: transactionsData } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+      let mQuery = supabase.from('members').select('*');
+      let pQuery = supabase.from('payments').select('*');
+      let iQuery = supabase.from('inventory').select('*');
+      let aQuery = supabase.from('attendance').select('*').order('checkInTime', { ascending: false });
+      let cQuery = supabase.from('classes').select('*');
+      let bQuery = supabase.from('bookings').select('*');
+      let tQuery = supabase.from('transactions').select('*').order('date', { ascending: false });
+
+      if (gymId) {
+        mQuery = mQuery.eq('gym_id', gymId);
+        pQuery = pQuery.eq('gym_id', gymId);
+        iQuery = iQuery.eq('gym_id', gymId);
+        aQuery = aQuery.eq('gym_id', gymId);
+        cQuery = cQuery.eq('gym_id', gymId);
+        bQuery = bQuery.eq('gym_id', gymId);
+        tQuery = tQuery.eq('gym_id', gymId);
+      }
+
+      const [
+        { data: membersData },
+        { data: paymentsData },
+        { data: inventoryData },
+        { data: attendanceData },
+        { data: classesData },
+        { data: bookingsData },
+        { data: transactionsData }
+      ] = await Promise.all([mQuery, pQuery, iQuery, aQuery, cQuery, bQuery, tQuery]);
 
       setMembers(membersData || []);
       setPayments(paymentsData || []);
@@ -76,7 +95,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [gymId]);
 
   useEffect(() => {
     fetchData();
@@ -85,17 +104,19 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useCallback(() => setSidebarCollapsed(p => !p), []);
 
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
-    const { data, error } = await supabase.from('transactions').insert([transaction]).select();
+    const payload = gymId ? { ...transaction, gym_id: gymId } : transaction;
+    const { data, error } = await supabase.from('transactions').insert([payload]).select();
     if (error) {
       console.error('Error adding transaction to Supabase:', error);
       setTransactions(prev => [{ ...transaction, id: `t${Date.now()}` } as Transaction, ...prev]);
     } else if (data) {
       setTransactions(prev => [data[0] as Transaction, ...prev]);
     }
-  }, []);
+  }, [gymId]);
 
   const addMember = useCallback(async (member: Omit<Member, 'id'>) => {
-    const { data, error } = await supabase.from('members').insert([member]).select();
+    const payload = gymId ? { ...member, gym_id: gymId } : member;
+    const { data, error } = await supabase.from('members').insert([payload]).select();
     if (error) {
       console.error('Error adding member to Supabase, updating local state only:', error);
       setMembers(prev => [...prev, { ...member, id: String(Date.now()) } as Member]);
@@ -116,17 +137,18 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         paymentMethod: 'Efectivo',
       });
     }
-  }, [addTransaction]);
+  }, [gymId, addTransaction]);
 
   const addInventoryItem = useCallback(async (item: Omit<InventoryItem, 'id'>) => {
-    const { data, error } = await supabase.from('inventory').insert([item]).select();
+    const payload = gymId ? { ...item, gym_id: gymId } : item;
+    const { data, error } = await supabase.from('inventory').insert([payload]).select();
     if (error) {
       console.error('Error adding inventory item to Supabase:', error);
       setInventory(prev => [...prev, { ...item, id: `i${Date.now()}` } as InventoryItem]);
     } else if (data) {
       setInventory(prev => [...prev, data[0] as InventoryItem]);
     }
-  }, []);
+  }, [gymId]);
 
   const updateInventoryStock = useCallback(async (id: string, delta: number) => {
     const item = inventory.find(i => i.id === id);
@@ -145,7 +167,6 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
     // Registrar transacción de compra o venta
     if (delta < 0) {
-      // Venta -> Ingreso
       await addTransaction({
         amount: item.price * Math.abs(delta),
         date: new Date().toISOString(),
@@ -155,9 +176,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         paymentMethod: 'Efectivo',
       });
     } else if (delta > 0) {
-      // Compra -> Egreso
       await addTransaction({
-        amount: item.price * delta * 0.7, // Asumimos un margen del 30% en el costo
+        amount: item.price * delta * 0.7,
         date: new Date().toISOString(),
         description: `Compra Stock - ${item.name}`,
         type: 'expense',
@@ -176,19 +196,19 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkIn = useCallback(async (record: Omit<AttendanceRecord, 'id'>) => {
-    const { data, error } = await supabase.from('attendance').insert([record]).select();
+    const payload = gymId ? { ...record, gym_id: gymId } : record;
+    const { data, error } = await supabase.from('attendance').insert([payload]).select();
     if (error) {
       console.error('Error checking in to Supabase:', error);
       setAttendance(prev => [{ ...record, id: `a${Date.now()}` } as AttendanceRecord, ...prev]);
     } else if (data) {
       setAttendance(prev => [data[0] as AttendanceRecord, ...prev]);
     }
-  }, []);
-
-
+  }, [gymId]);
 
   const addClass = useCallback(async (gymClass: Omit<GymClass, 'id'>) => {
-    const { data, error } = await supabase.from('classes').insert([gymClass]).select();
+    const payload = gymId ? { ...gymClass, gym_id: gymId } : gymClass;
+    const { data, error } = await supabase.from('classes').insert([payload]).select();
     if (error) {
       console.error('Error adding class to Supabase:', error);
       const newClass = { ...gymClass, id: `c${Date.now()}` } as GymClass;
@@ -196,21 +216,21 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     } else if (data) {
       setClasses(prev => [...prev, data[0] as GymClass]);
     }
-  }, []);
+  }, [gymId]);
 
   const bookClass = useCallback(async (booking: Omit<Booking, 'id'>) => {
-    const { data, error } = await supabase.from('bookings').insert([booking]).select();
+    const payload = gymId ? { ...booking, gym_id: gymId } : booking;
+    const { data, error } = await supabase.from('bookings').insert([payload]).select();
     if (error) {
       console.error('Error booking class in Supabase:', error);
       const newBooking = { ...booking, id: `b${Date.now()}` } as Booking;
       setBookings(prev => [...prev, newBooking]);
-      // Update enrolled count locally
       setClasses(prev => prev.map(c => c.id === booking.classId ? { ...c, enrolled: c.enrolled + 1 } : c));
     } else if (data) {
       setBookings(prev => [...prev, data[0] as Booking]);
       setClasses(prev => prev.map(c => c.id === booking.classId ? { ...c, enrolled: c.enrolled + 1 } : c));
     }
-  }, []);
+  }, [gymId]);
 
   const cancelBooking = useCallback(async (id: string) => {
     const booking = bookings.find(b => b.id === id);
@@ -237,7 +257,6 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     }
     
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, autoRenew: newValue } : m));
-    // También actualizar en los pagos locales para consistencia en la vista de membresías
     setPayments(prev => prev.map(p => p.memberId === memberId ? { ...p, autoRenew: newValue } : p));
   }, [members]);
 
@@ -254,10 +273,6 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       toggleAutoRenew,
       globalSearch, setGlobalSearch,
     }}>
-
-
-
-
       {children}
     </GymContext.Provider>
   );
@@ -268,3 +283,4 @@ export function useGym() {
   if (!ctx) throw new Error('useGym must be used within GymProvider');
   return ctx;
 }
+

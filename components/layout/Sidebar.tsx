@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Dumbbell, LayoutDashboard, Users, CreditCard, ClipboardList, SquareCheck as CheckSquare, Package, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { Dumbbell, LayoutDashboard, Users, CreditCard, ClipboardList, SquareCheck as CheckSquare, Package, ChevronLeft, ChevronRight, Wallet, BadgePercent } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
 import { cn } from '@/lib/utils';
 
@@ -14,7 +14,10 @@ const navItems = [
   { href: '/classes', icon: ClipboardList, label: 'Clases' },
   { href: '/attendance', icon: CheckSquare, label: 'Asistencia' },
   { href: '/inventory', icon: Package, label: 'Inventario' },
+  { href: '/billing', icon: BadgePercent, label: 'Suscripción' },
+
 ];
+
 
 
 export default function Sidebar() {

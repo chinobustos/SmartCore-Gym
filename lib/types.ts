@@ -1,9 +1,32 @@
 export type MemberStatus = 'active' | 'inactive' | 'expired';
 export type PlanType = 'monthly' | 'quarterly' | 'daily';
 export type PaymentStatus = 'paid' | 'pending' | 'overdue';
+export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled';
+
+export interface Gym {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  rubro?: string;
+  openingHours?: Record<string, string>;
+  mpPreapprovalId?: string;
+  subscriptionStatus: SubscriptionStatus;
+  trialEndsAt: string;
+  currentPeriodEnd?: string;
+  createdAt?: string;
+}
+
+export interface GymUser {
+  id: string;
+  gymId: string;
+  role: 'owner' | 'staff';
+  fullName?: string;
+  createdAt?: string;
+}
 
 export interface Member {
   id: string;
+  gym_id?: string;
   name: string;
   dni: string;
   plan: PlanType;
@@ -27,6 +50,7 @@ export interface Plan {
 
 export interface Payment {
   id: string;
+  gym_id?: string;
   memberId: string;
   memberName: string;
   amount: number;
@@ -38,10 +62,9 @@ export interface Payment {
   paymentLink?: string;
 }
 
-
-
 export interface AttendanceRecord {
   id: string;
+  gym_id?: string;
   memberId: string;
   memberName: string;
   memberPlan: string;
@@ -51,6 +74,7 @@ export interface AttendanceRecord {
 
 export interface InventoryItem {
   id: string;
+  gym_id?: string;
   name: string;
   category: string;
   stock: number;
@@ -66,6 +90,7 @@ export interface WeeklyAttendance {
 
 export interface GymClass {
   id: string;
+  gym_id?: string;
   name: string;
   instructor: string;
   day: string;
@@ -80,6 +105,7 @@ export interface GymClass {
 
 export interface Booking {
   id: string;
+  gym_id?: string;
   classId: string;
   memberId: string;
   memberName: string;
@@ -89,6 +115,7 @@ export interface Booking {
 
 export interface Transaction {
   id: string;
+  gym_id?: string;
   amount: number;
   date: string;
   description: string;
@@ -96,4 +123,5 @@ export interface Transaction {
   category: string;
   paymentMethod?: string;
 }
+
 

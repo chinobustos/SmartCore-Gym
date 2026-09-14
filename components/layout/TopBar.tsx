@@ -1,17 +1,20 @@
 'use client';
 
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import { Bell, Search, User, LogOut, Sparkles } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
 import { useAuth } from '@/lib/context/AuthContext';
 import { usePathname } from 'next/navigation';
+import { triggerOnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 
 const pageTitles: Record<string, { title: string; subtitle: string }> = {
   '/dashboard': { title: 'Dashboard', subtitle: 'Resumen ejecutivo del gimnasio' },
   '/finances': { title: 'Finanzas', subtitle: 'Historial de transferencias y movimientos' },
   '/members': { title: 'Miembros', subtitle: 'Gestión de socios y perfiles' },
   '/memberships': { title: 'Membresías', subtitle: 'Planes y pagos' },
+  '/classes': { title: 'Clases', subtitle: 'Agenda de horarios y actividades grupales' },
   '/attendance': { title: 'Asistencia', subtitle: 'Check-in rápido de socios' },
-  '/inventory': { title: 'Inventario', subtitle: 'Control de stock de suplementos' },
+  '/inventory': { title: 'Inventario', subtitle: 'Control de stock y ventas de tienda' },
+  '/billing': { title: 'Suscripción', subtitle: 'Gestión del plan SaaS y facturación' },
 };
 
 export default function TopBar() {
@@ -38,6 +41,16 @@ export default function TopBar() {
             className="pl-9 pr-4 py-2 bg-secondary border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 w-64 transition-all"
           />
         </div>
+
+        {/* Botón de Guía de Módulos / Tour */}
+        <button
+          onClick={() => triggerOnboardingWizard(0)}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 text-xs font-semibold transition-all shadow-sm group"
+          title="Tour interactivo de módulos"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-primary group-hover:scale-110 transition-transform" />
+          <span className="hidden sm:inline">Guía de Módulos</span>
+        </button>
 
         <button className="relative p-2 rounded-lg bg-secondary hover:bg-muted transition-colors">
           <Bell className="w-4 h-4 text-muted-foreground" />

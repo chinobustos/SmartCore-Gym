@@ -35,7 +35,7 @@
 @layer base {
   * {
     @apply border-border;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   }
   body {
     @apply bg-background text-foreground antialiased;
@@ -68,7 +68,7 @@
 }
 .recharts-text {
   fill: hsl(222, 47%, 50%) !important;
-  font-family: 'Inter', sans-serif !important;
+  font-family: 'SF Pro Display', 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
   font-size: 12px !important;
 }
 

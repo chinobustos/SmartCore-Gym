@@ -1,8 +1,5 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'SmartCore Gym - Sistema de Gestión de Gimnasios',
@@ -15,7 +12,7 @@ import { Toaster } from '@/components/ui/sonner';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${inter.variable} ${inter.className}`}>
+      <body className="font-sans antialiased">
         <AuthProvider>
           {children}
           <Toaster />

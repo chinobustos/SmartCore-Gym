@@ -3,7 +3,9 @@
 import { GymProvider } from '@/lib/context/GymContext';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
+import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
 import { usePathname } from 'next/navigation';
+import { Suspense } from 'react';
 
 export default function GymLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -33,6 +35,11 @@ export default function GymLayout({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      {/* Suspense acota a este subárbol la deopt a client-side rendering que
+          provoca useSearchParams() dentro del wizard */}
+      <Suspense fallback={null}>
+        <OnboardingWizard />
+      </Suspense>
     </GymProvider>
   );
 }

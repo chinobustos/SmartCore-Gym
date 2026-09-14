@@ -36,19 +36,58 @@ export const updateSession = async (request: NextRequest) => {
   const { data: { user } } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname === '/login';
+  const isRegisterPage = request.nextUrl.pathname === '/register';
+  const isBillingPage = request.nextUrl.pathname === '/billing';
+  const isApiRoute = request.nextUrl.pathname.startsWith('/api');
 
-  // Protect routes
-  if (!user && !isLoginPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  // Protect unauthenticated routes
+  if (!user && !isLoginPage && !isRegisterPage && !isApiRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    return NextResponse.redirect(url);
   }
 
   if (user && isLoginPage) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    const url = request.nextUrl.clone();
+    url.pathname = '/dashboard';
+    return NextResponse.redirect(url);
+  }
+
+  // Evaluate Gym Subscription Status for Authenticated Users
+  if (user && !isBillingPage && !isApiRoute && !isLoginPage && !isRegisterPage) {
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('gym_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.gym_id) {
+        const { data: gym } = await supabase
+          .from('gyms')
+          .select('subscription_status, trial_ends_at')
+          .eq('id', profile.gym_id)
+          .single();
+
+        if (gym) {
+          const now = new Date();
+          const trialEnd = gym.trial_ends_at ? new Date(gym.trial_ends_at) : new Date(0);
+          const isTrialExpired = gym.subscription_status === 'trialing' && now > trialEnd;
+          const isPastDueOrCanceled = gym.subscription_status === 'past_due' || gym.subscription_status === 'canceled';
+
+          if (isTrialExpired || isPastDueOrCanceled) {
+            const url = request.nextUrl.clone();
+            url.pathname = '/billing';
+            url.searchParams.set('reason', 'expired');
+            return NextResponse.redirect(url);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Middleware subscription evaluation error:', err);
+    }
   }
 
   return supabaseResponse;
 };
+

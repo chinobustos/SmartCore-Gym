@@ -102,11 +102,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="pt-6 border-t border-border">
-            <p className="text-xs text-center text-muted-foreground">
-              Datos de prueba: admin@smartcoregym.com / admin123
-            </p>
-          </div>
+          
         </div>
       </div>
 
