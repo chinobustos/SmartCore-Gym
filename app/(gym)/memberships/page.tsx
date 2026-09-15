@@ -1,9 +1,14 @@
 'use client';
 
-import { Check, CircleAlert as AlertCircle, Clock, CreditCard, Star, RefreshCcw, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { Check, CircleAlert as AlertCircle, Clock, CreditCard, Star, RefreshCcw, ExternalLink, Plus, Pencil, Tag, FileDown } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
-import { mockPlans } from '@/lib/data/mockData';
-import type { PaymentStatus } from '@/lib/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import PlanFormDialog, { formatDuration } from '@/components/memberships/PlanFormDialog';
+import { exportToExcel, datedFilename, EXCEL_FORMAT } from '@/lib/export/excel';
+import type { PaymentStatus, Plan } from '@/lib/types';
 import { cn, generatePaymentLink } from '@/lib/utils';
 
 const PAYMENT_STATUS: Record<PaymentStatus, { label: string; style: string; icon: typeof Check }> = {
@@ -13,8 +18,11 @@ const PAYMENT_STATUS: Record<PaymentStatus, { label: string; style: string; icon
 };
 
 export default function MembershipsPage() {
-  const { payments, toggleAutoRenew } = useGym();
+  const { payments, plans, toggleAutoRenew } = useGym();
 
+  // `null` = cerrado. `{ plan: undefined }` = creando. `{ plan }` = editando.
+  const [dialog, setDialog] = useState<{ plan?: Plan } | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const totalRevenue = payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
   const pending = payments.filter(p => p.status === 'pending').length;
@@ -22,8 +30,48 @@ export default function MembershipsPage() {
 
   const handleCopyLink = (link: string) => {
     navigator.clipboard.writeText(link);
-    // Podríamos añadir un toast aquí
-    alert('Link de pago copiado al portapapeles');
+    toast.success('Link de pago copiado al portapapeles');
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportToExcel(
+        [
+          {
+            name: 'Planes',
+            rows: plans,
+            columns: [
+              { header: 'Nombre', value: p => p.name },
+              { header: 'Precio', value: p => p.price, format: EXCEL_FORMAT.currencyARS },
+              { header: 'Duración (días)', value: p => p.durationDays },
+              { header: 'Beneficios', value: p => p.features.join(', '), width: 50 },
+              { header: 'Popular', value: p => (p.popular ? 'Sí' : 'No') },
+            ],
+          },
+          {
+            name: 'Pagos',
+            rows: payments,
+            columns: [
+              { header: 'Socio', value: p => p.memberName },
+              { header: 'Plan', value: p => p.plan },
+              { header: 'Monto', value: p => p.amount, format: EXCEL_FORMAT.currencyARS },
+              { header: 'Fecha', value: p => (p.date ? new Date(p.date) : null), format: EXCEL_FORMAT.date },
+              { header: 'Vencimiento', value: p => (p.dueDate ? new Date(p.dueDate) : null), format: EXCEL_FORMAT.date },
+              { header: 'Estado', value: p => PAYMENT_STATUS[p.status as PaymentStatus]?.label ?? p.status },
+              { header: 'Auto-renovación', value: p => (p.autoRenew ? 'Activada' : 'Manual') },
+            ],
+          },
+        ],
+        datedFilename('membresias')
+      );
+      toast.success('Planilla descargada');
+    } catch (error) {
+      console.error('[export] Error exportando membresías:', error);
+      toast.error('No se pudo generar la planilla');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -48,9 +96,40 @@ export default function MembershipsPage() {
       </div>
 
       <div>
-        <h2 className="text-base font-semibold text-foreground mb-3">Planes Disponibles</h2>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <h2 className="text-base font-semibold text-foreground">Planes Disponibles</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-secondary text-foreground border border-border hover:bg-muted disabled:opacity-60 transition-colors"
+            >
+              <FileDown className="w-4 h-4" />
+              {exporting ? 'Generando...' : 'Exportar a Excel'}
+            </button>
+            <button
+              onClick={() => setDialog({})}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo Plan
+            </button>
+          </div>
+        </div>
+
+        {plans.length === 0 ? (
+          <div className="gym-card">
+            <EmptyState
+              icon={Tag}
+              title="Todavía no tenés planes"
+              description="Creá los planes y membresías que ofrece tu gimnasio. Podés definir el precio, la duración y los beneficios de cada uno."
+              actionLabel="Crear el primero"
+              onAction={() => setDialog({})}
+            />
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {mockPlans.map(plan => (
+          {plans.map(plan => (
             <div key={plan.id} className={cn('gym-card p-5 relative', plan.popular && 'border-primary/40')}>
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -61,7 +140,7 @@ export default function MembershipsPage() {
               )}
               <div className="mb-4">
                 <p className="font-bold text-foreground text-base">{plan.name}</p>
-                <p className="text-xs text-muted-foreground">{plan.duration}</p>
+                <p className="text-xs text-muted-foreground">{formatDuration(plan.durationDays)}</p>
               </div>
               <div className="mb-4">
                 <span className="text-3xl font-extrabold text-foreground">${plan.price.toLocaleString('es-AR')}</span>
@@ -75,15 +154,21 @@ export default function MembershipsPage() {
                   </li>
                 ))}
               </ul>
-              <button className={cn(
-                'w-full py-2.5 rounded-lg text-sm font-semibold transition-colors',
-                plan.popular ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-secondary text-foreground hover:bg-muted border border-border'
-              )}>
-                Seleccionar Plan
+              <button
+                onClick={() => setDialog({ plan })}
+                aria-label={`Editar ${plan.name}`}
+                className={cn(
+                  'w-full py-2.5 rounded-lg text-sm font-semibold transition-colors inline-flex items-center justify-center gap-1.5',
+                  plan.popular ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-secondary text-foreground hover:bg-muted border border-border'
+                )}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar
               </button>
             </div>
           ))}
         </div>
+        )}
       </div>
 
       <div>
@@ -153,6 +238,16 @@ export default function MembershipsPage() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {dialog && (
+          <PlanFormDialog
+            key={dialog.plan?.id ?? 'new'}
+            plan={dialog.plan}
+            onClose={() => setDialog(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

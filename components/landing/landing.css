@@ -1,0 +1,173 @@
+/**
+ * Tokens de la landing. Van scopeados a [data-landing] para no filtrarse
+ * al design system de la app, que tiene su propia paleta y tipografia.
+ */
+
+[data-landing] {
+  /* Tinta verde-negra en vez de negro neutro: la marca tiñe hasta la sombra. */
+  --ink: #0a1f19;
+  --ink-soft: #14312a;
+
+  /* Papel gris-verde frio. */
+  --paper: #f1f3f1;
+  --surface: #ffffff;
+
+  --primary: #10b77f;
+  --deep: #075c42;
+
+  /* Rojo del disco olimpico de 25 kg: el color con el que un gimnasio ya
+     asocia "pesado". Lo usamos solo para vencimientos. */
+  --alert: #e0452e;
+
+  --rule: #d7dddA;
+  --muted: #5b6b65;
+
+  --font-display-stack: var(--font-display), "Archivo", system-ui, sans-serif;
+  --font-body-stack: var(--font-body), "Chivo", system-ui, sans-serif;
+  --font-mono-stack: var(--font-mono), "Chivo Mono", ui-monospace, monospace;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body-stack);
+  -webkit-font-smoothing: antialiased;
+}
+
+[data-landing] ::selection {
+  background: var(--primary);
+  color: #fff;
+}
+
+[data-landing] .display {
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+[data-landing] .mono {
+  font-family: var(--font-mono-stack);
+  font-variant-ligatures: none;
+}
+
+/* Etiqueta de seccion: corta, en versalitas monoespaciadas. */
+[data-landing] .eyebrow {
+  font-family: var(--font-mono-stack);
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+[data-landing] .band-ink {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+[data-landing] .band-ink .eyebrow {
+  color: #7d9b90;
+}
+
+/**
+ * Entrada del hero en CSS, no en JS.
+ *
+ * Framer-motion anima con requestAnimationFrame, que el navegador congela en
+ * pestañas ocultas: el contenido se quedaria en opacity 0 y la pagina se veria
+ * vacia. Las animaciones CSS avanzan con el timeline del documento, asi que el
+ * contenido que esta arriba del fold nunca depende de que el JS corra.
+ */
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+[data-landing] .rise {
+  animation: landing-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+[data-landing] .rise-1 { animation-delay: 0.05s; }
+[data-landing] .rise-2 { animation-delay: 0.12s; }
+[data-landing] .rise-3 { animation-delay: 0.19s; }
+[data-landing] .rise-4 { animation-delay: 0.26s; }
+[data-landing] .rise-5 { animation-delay: 0.33s; }
+
+/**
+ * Secciones a pantalla completa, con el contenido centrado verticalmente.
+ *
+ * Usa svh y no vh: en los navegadores moviles vh cuenta la barra de
+ * direcciones, asi que con vh cada seccion quedaria mas alta que la pantalla
+ * y se veria un recorte al hacer scroll.
+ *
+ * Solo desde 768px: en un celular forzar 100svh con este contenido apretaria
+ * el texto contra los bordes.
+ */
+@media (min-width: 768px) {
+  [data-landing] .screen {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+}
+
+/* Foco visible sin depender del outline por defecto del navegador. */
+[data-landing] a:focus-visible,
+[data-landing] button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] *,
+  [data-landing] *::before,
+  [data-landing] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Con movimiento reducido no hay entrada: el contenido aparece y punto. */
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] .rise {
+    animation: none;
+  }
+}
+
+/* El hero comparte la primera pantalla con la barra de navegacion: si midiera
+   100svh completos, la suma daria mas alto que el viewport y apareceria un
+   scroll que no corresponde. */
+@media (min-width: 768px) {
+  [data-landing] .screen-first {
+    min-height: calc(100svh - 86px);
+  }
+}
+
+/* Revelado al entrar en viewport. Transicion CSS, no rAF: asi no se congela
+   cuando la pestaña esta en segundo plano. */
+[data-landing] .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-landing] .reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-landing] .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

@@ -11,6 +11,7 @@ export default function BillingPage() {
   const { gym, gymId, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
 
   const calculateTrialDaysLeft = () => {
     if (!gym?.trialEndsAt) return 0;
@@ -26,6 +27,7 @@ export default function BillingPage() {
   const handleSubscribe = async () => {
     setLoading(true);
     setMsg('');
+    setError('');
     try {
       const res = await fetch('/api/mercadopago/subscribe', {
         method: 'POST',
@@ -46,7 +48,7 @@ export default function BillingPage() {
       // nunca el cliente: aca solo derivamos al checkout.
       window.location.href = data.init_point;
     } catch (err: any) {
-      setMsg(err.message || 'Error al procesar la suscripción.');
+      setError(err.message || 'Error al procesar la suscripción.');
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,18 @@ export default function BillingPage() {
 
       {msg && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-medium flex items-center gap-2">
-          <CheckCircle2 className="h-5 w-5" />
+          <CheckCircle2 className="h-5 w-5 shrink-0" />
           {msg}
+        </div>
+      )}
+
+      {error && (
+        <div
+          role="alert"
+          className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-sm font-medium flex items-center gap-2"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          {error}
         </div>
       )}
 

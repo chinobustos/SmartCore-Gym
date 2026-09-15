@@ -19,9 +19,15 @@ const pageTitles: Record<string, { title: string; subtitle: string }> = {
 
 export default function TopBar() {
   const { globalSearch, setGlobalSearch } = useGym();
-  const { user, logout } = useAuth();
+  const { user, gym, logout } = useAuth();
   const pathname = usePathname();
   const page = pageTitles[pathname] ?? { title: 'SmartCore Gym', subtitle: '' };
+
+  // Inicial del gimnasio para el avatar: primer caracter alfanumerico, para
+  // saltear comillas o espacios sin caer en la segunda palabra. En
+  // "9 de Julio Fitness" da "9", que es lo que el ojo lee primero; buscar
+  // solo letras daria "D" (de "de"), que confunde.
+  const gymInitial = gym?.name?.match(/[\p{L}\p{N}]/u)?.[0]?.toUpperCase();
 
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-white sticky top-0 z-10 shadow-sm">
@@ -59,11 +65,26 @@ export default function TopBar() {
 
         <div className="flex items-center gap-4 pl-3 border-l border-border">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+              {gym?.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- logo remoto de origen arbitrario
+                <img
+                  src={gym.logoUrl}
+                  alt={`Logo de ${gym.name}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : gymInitial ? (
+                <span aria-hidden="true" className="text-sm font-bold text-primary leading-none">
+                  {gymInitial}
+                </span>
+              ) : (
+                <User className="w-4 h-4 text-primary" />
+              )}
             </div>
             <div className="hidden md:block">
-              <p className="text-sm font-medium text-foreground leading-none">{user?.name || 'Admin'}</p>
+              <p className="text-sm font-medium text-foreground leading-none">
+                {gym?.name || user?.name || 'Admin'}
+              </p>
               <p className="text-[11px] text-muted-foreground leading-none mt-0.5">{user?.role === 'admin' ? 'Administrador' : 'Gerente'}</p>
             </div>
           </div>

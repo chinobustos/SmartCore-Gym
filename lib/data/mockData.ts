@@ -1,4 +1,4 @@
-import type { Member, Plan, Payment, AttendanceRecord, InventoryItem, WeeklyAttendance, GymClass, Booking, Transaction } from '@/lib/types';
+import type { Member, Payment, AttendanceRecord, InventoryItem, WeeklyAttendance, GymClass, Booking, Transaction } from '@/lib/types';
 
 export const mockMembers: Member[] = [
   { id: '1', name: 'Carlos Mendoza', dni: '28543210', plan: 'monthly', status: 'active', startDate: '2024-01-15', email: 'carlos.m@email.com', phone: '+54 9 11 5555-1234', avatar: 'CM', autoRenew: true },
@@ -15,11 +15,6 @@ export const mockMembers: Member[] = [
   { id: '12', name: 'Agustina Pérez', dni: '28901234', plan: 'quarterly', status: 'active', startDate: '2024-02-14', email: 'agus.p@email.com', phone: '+54 9 11 5555-2222', avatar: 'AP', autoRenew: true },
 ];
 
-export const mockPlans: Plan[] = [
-  { id: '1', name: 'Pase Diario', type: 'daily', duration: '1 día', price: 1500, features: ['Acceso completo 1 día', 'Vestuarios', 'Área cardio'] },
-  { id: '2', name: 'Membresía Mensual', type: 'monthly', duration: '30 días', price: 12000, features: ['Acceso ilimitado', 'Vestuarios', 'Área cardio', 'Sala de pesas', 'Clases grupales'], popular: true },
-  { id: '3', name: 'Plan Trimestral', type: 'quarterly', duration: '90 días', price: 30000, features: ['Acceso ilimitado', 'Vestuarios', 'Área cardio', 'Sala de pesas', 'Clases grupales', 'Evaluación física', '2 sesiones con entrenador'] },
-];
 
 export const mockPayments: Payment[] = [
   { id: '1', memberId: '1', memberName: 'Carlos Mendoza', amount: 12000, date: '2024-04-01', dueDate: '2024-05-01', status: 'paid', plan: 'Mensual', autoRenew: true },

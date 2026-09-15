@@ -38,15 +38,23 @@ export interface Member {
   autoRenew: boolean;
 }
 
+/**
+ * Plan de membresia que el gimnasio ofrece a sus socios.
+ * La duracion se guarda en dias para poder calcular vencimientos;
+ * el texto que se muestra ("30 dias") se deriva de ahi.
+ */
 export interface Plan {
   id: string;
+  gymId?: string;
   name: string;
-  type: PlanType;
-  duration: string;
+  durationDays: number;
   price: number;
   features: string[];
   popular?: boolean;
 }
+
+/** Campos que el usuario completa al crear o editar un plan. */
+export type PlanInput = Omit<Plan, 'id' | 'gymId'>;
 
 export interface Payment {
   id: string;

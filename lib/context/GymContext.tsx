@@ -1,9 +1,31 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import type { Member, Payment, InventoryItem, AttendanceRecord, GymClass, Booking, Transaction } from '@/lib/types';
+import type { Member, Payment, InventoryItem, AttendanceRecord, GymClass, Booking, Transaction, Plan, PlanInput } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/context/AuthContext';
+
+/**
+ * `membership_plans` usa snake_case, asi que mapeamos explicitamente en vez
+ * de castear la fila. `price` llega como string desde NUMERIC.
+ */
+const rowToPlan = (row: any): Plan => ({
+  id: row.id,
+  gymId: row.gym_id,
+  name: row.name,
+  durationDays: Number(row.duration_days),
+  price: Number(row.price),
+  features: Array.isArray(row.features) ? row.features : [],
+  popular: Boolean(row.popular),
+});
+
+const planToRow = (plan: PlanInput) => ({
+  name: plan.name,
+  duration_days: plan.durationDays,
+  price: plan.price,
+  features: plan.features,
+  popular: plan.popular ?? false,
+});
 
 interface GymContextType {
   sidebarCollapsed: boolean;
@@ -22,6 +44,10 @@ interface GymContextType {
   bookings: Booking[];
   transactions: Transaction[];
   addTransaction: (transaction: Omit<Transaction, 'id'>) => Promise<void>;
+  plans: Plan[];
+  addPlan: (plan: PlanInput) => Promise<void>;
+  updatePlan: (id: string, plan: PlanInput) => Promise<void>;
+  deletePlan: (id: string) => Promise<void>;
   bookClass: (booking: Omit<Booking, 'id'>) => Promise<void>;
   cancelBooking: (id: string) => Promise<void>;
   addClass: (gymClass: Omit<GymClass, 'id'>) => Promise<void>;
@@ -43,6 +69,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [globalSearch, setGlobalSearch] = useState('');
 
   const fetchData = useCallback(async () => {
@@ -55,6 +82,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       let cQuery = supabase.from('classes').select('*');
       let bQuery = supabase.from('bookings').select('*');
       let tQuery = supabase.from('transactions').select('*').order('date', { ascending: false });
+      let plQuery = supabase.from('membership_plans').select('*').order('price', { ascending: true });
 
       if (gymId) {
         mQuery = mQuery.eq('gym_id', gymId);
@@ -64,6 +92,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         cQuery = cQuery.eq('gym_id', gymId);
         bQuery = bQuery.eq('gym_id', gymId);
         tQuery = tQuery.eq('gym_id', gymId);
+        plQuery = plQuery.eq('gym_id', gymId);
       }
 
       const [
@@ -73,8 +102,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         { data: attendanceData },
         { data: classesData },
         { data: bookingsData },
-        { data: transactionsData }
-      ] = await Promise.all([mQuery, pQuery, iQuery, aQuery, cQuery, bQuery, tQuery]);
+        { data: transactionsData },
+        { data: plansData }
+      ] = await Promise.all([mQuery, pQuery, iQuery, aQuery, cQuery, bQuery, tQuery, plQuery]);
 
       setMembers(membersData || []);
       setPayments(paymentsData || []);
@@ -83,6 +113,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       setClasses(classesData || []);
       setBookings(bookingsData || []);
       setTransactions(transactionsData || []);
+      setPlans((plansData || []).map(rowToPlan));
     } catch (error) {
       console.error('Error fetching data from Supabase:', error);
       setMembers([]);
@@ -92,6 +123,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       setClasses([]);
       setBookings([]);
       setTransactions([]);
+      setPlans([]);
     } finally {
       setIsLoading(false);
     }
@@ -113,6 +145,43 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       setTransactions(prev => [data[0] as Transaction, ...prev]);
     }
   }, [gymId]);
+
+  const addPlan = useCallback(async (plan: PlanInput) => {
+    if (!gymId) throw new Error('No hay un gimnasio activo.');
+    const { data, error } = await supabase
+      .from('membership_plans')
+      .insert([{ ...planToRow(plan), gym_id: gymId }])
+      .select()
+      .single();
+    if (error) {
+      console.error('[plans] Error creando el plan:', error);
+      throw new Error(error.message);
+    }
+    setPlans(prev => [...prev, rowToPlan(data)].sort((a, b) => a.price - b.price));
+  }, [gymId]);
+
+  const updatePlan = useCallback(async (id: string, plan: PlanInput) => {
+    const { data, error } = await supabase
+      .from('membership_plans')
+      .update(planToRow(plan))
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      console.error('[plans] Error actualizando el plan:', error);
+      throw new Error(error.message);
+    }
+    setPlans(prev => prev.map(p => (p.id === id ? rowToPlan(data) : p)).sort((a, b) => a.price - b.price));
+  }, []);
+
+  const deletePlan = useCallback(async (id: string) => {
+    const { error } = await supabase.from('membership_plans').delete().eq('id', id);
+    if (error) {
+      console.error('[plans] Error eliminando el plan:', error);
+      throw new Error(error.message);
+    }
+    setPlans(prev => prev.filter(p => p.id !== id));
+  }, []);
 
   const addMember = useCallback(async (member: Omit<Member, 'id'>) => {
     const payload = gymId ? { ...member, gym_id: gymId } : member;
@@ -270,6 +339,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       attendance, checkIn,
       classes, bookings, bookClass, cancelBooking, addClass,
       transactions, addTransaction,
+      plans, addPlan, updatePlan, deletePlan,
       toggleAutoRenew,
       globalSearch, setGlobalSearch,
     }}>

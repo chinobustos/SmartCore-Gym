@@ -39,9 +39,13 @@ export const updateSession = async (request: NextRequest) => {
   const isRegisterPage = request.nextUrl.pathname === '/register';
   const isBillingPage = request.nextUrl.pathname === '/billing';
   const isApiRoute = request.nextUrl.pathname.startsWith('/api');
+  // La raiz es la landing publica: tiene que verse sin sesion.
+  const isLandingPage = request.nextUrl.pathname === '/';
+
+  const isPublicPage = isLoginPage || isRegisterPage || isLandingPage;
 
   // Protect unauthenticated routes
-  if (!user && !isLoginPage && !isRegisterPage && !isApiRoute) {
+  if (!user && !isPublicPage && !isApiRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
@@ -54,7 +58,7 @@ export const updateSession = async (request: NextRequest) => {
   }
 
   // Evaluate Gym Subscription Status for Authenticated Users
-  if (user && !isBillingPage && !isApiRoute && !isLoginPage && !isRegisterPage) {
+  if (user && !isBillingPage && !isApiRoute && !isPublicPage) {
     try {
       const { data: profile } = await supabase
         .from('users')

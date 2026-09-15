@@ -1,7 +1,9 @@
 'use client';
 
-import { Wallet, ArrowDownRight, ArrowUpRight, Search, Plus, CreditCard, Calendar } from 'lucide-react';
+import { Wallet, ArrowDownRight, ArrowUpRight, Search, Plus, CreditCard, Calendar, FileDown } from 'lucide-react';
+import { toast } from 'sonner';
 import { useGym } from '@/lib/context/GymContext';
+import { exportToExcel, datedFilename, EXCEL_FORMAT } from '@/lib/export/excel';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,9 +17,55 @@ export default function FinancesPage() {
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Combine local and global search
   const activeSearch = search || globalSearch;
+
+  /** Exporta el total de movimientos, ignorando el filtro y la busqueda activos. */
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const expense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+      await exportToExcel(
+        [
+          {
+            name: 'Movimientos',
+            rows: transactions,
+            columns: [
+              { header: 'Fecha', value: t => (t.date ? new Date(t.date) : null), format: EXCEL_FORMAT.date },
+              { header: 'Descripción', value: t => t.description, width: 40 },
+              { header: 'Tipo', value: t => (t.type === 'income' ? 'Ingreso' : 'Egreso') },
+              { header: 'Categoría', value: t => t.category },
+              { header: 'Método de pago', value: t => t.paymentMethod ?? '' },
+              { header: 'Monto', value: t => t.amount, format: EXCEL_FORMAT.currencyARS },
+            ],
+          },
+          {
+            name: 'Resumen',
+            rows: [
+              { concepto: 'Ingresos', monto: income },
+              { concepto: 'Egresos', monto: expense },
+              { concepto: 'Balance', monto: income - expense },
+            ],
+            columns: [
+              { header: 'Concepto', value: r => r.concepto },
+              { header: 'Monto', value: r => r.monto, format: EXCEL_FORMAT.currencyARS },
+            ],
+          },
+        ],
+        datedFilename('finanzas')
+      );
+      toast.success('Planilla descargada');
+    } catch (error) {
+      console.error('[export] Error exportando finanzas:', error);
+      toast.error('No se pudo generar la planilla');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Calculations
   const { totalBalance, totalIncome, totalExpense } = useMemo(() => {
@@ -176,6 +224,16 @@ export default function FinancesPage() {
                 Egresos
               </button>
             </div>
+
+            <button
+              onClick={handleExport}
+              disabled={exporting || transactions.length === 0}
+              title={transactions.length === 0 ? 'No hay movimientos para exportar' : 'Exporta todos los movimientos, sin aplicar filtros'}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-background text-foreground border border-border shadow-sm hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-all w-full sm:w-auto"
+            >
+              <FileDown className="w-4 h-4" />
+              {exporting ? 'Generando...' : 'Exportar a Excel'}
+            </button>
           </div>
         </div>
 

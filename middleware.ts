@@ -7,6 +7,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // Los assets de la PWA (manifest, service worker, iconos y la pagina
+    // offline) tienen que ser publicos: si el middleware los redirige a
+    // /login, el navegador no puede registrar el SW ni ofrecer instalar.
+    '/((?!api|_next/static|_next/image|favicon.ico|icons/|manifest.webmanifest|sw.js|offline.html).*)',
   ],
 };
