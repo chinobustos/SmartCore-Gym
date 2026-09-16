@@ -190,7 +190,7 @@ export default function BillingPage() {
 
           <CardContent className="space-y-3">
             <div className="text-3xl font-extrabold text-white">
-              $15.000 <span className="text-xs font-normal text-slate-400">/ mes</span>
+              $60.000 <span className="text-xs font-normal text-slate-400">/ mes</span>
             </div>
             <ul className="text-xs text-slate-300 space-y-2">
               <li className="flex items-center gap-2">

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       gymId,
       gymName,
       email,
-      amount: 15000, // Precio de suscripción mensual
+      amount: 60000, // Precio de suscripción mensual
       currency: 'ARS',
     });
 

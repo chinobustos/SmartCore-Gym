@@ -30,7 +30,7 @@ export async function createSubscription({
   gymId,
   gymName,
   email,
-  amount = 15000,
+  amount = 60000,
   currency = 'ARS',
   backUrl,
 }: CreateSubscriptionParams): Promise<CreateSubscriptionResult> {
