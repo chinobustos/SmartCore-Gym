@@ -19,11 +19,16 @@ const MP_API = 'https://api.mercadopago.com';
  * El manifest a firmar es: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
  * (los segmentos cuyo valor no llega se omiten por completo).
  */
-function isValidSignature(request: Request, dataId: string | null): boolean {
+/**
+ * `null` = firma valida. Si no, devuelve el motivo, que se loguea. Distinguir
+ * "no vino firma" de "no coincide" importa: se arreglan distinto y desde
+ * afuera los dos se veian igual.
+ */
+function checkSignature(request: Request, dataId: string | null): string | null {
   const signature = request.headers.get('x-signature');
   const requestId = request.headers.get('x-request-id');
 
-  if (!signature) return false;
+  if (!signature) return 'la notificacion no trae header x-signature';
 
   const parts = signature.split(',').reduce<Record<string, string>>((acc, part) => {
     const [key, value] = part.split('=', 2);
@@ -33,7 +38,7 @@ function isValidSignature(request: Request, dataId: string | null): boolean {
 
   const ts = parts['ts'];
   const v1 = parts['v1'];
-  if (!ts || !v1) return false;
+  if (!ts || !v1) return `x-signature sin ts o v1 (recibido: "${signature}")`;
 
   // MP exige el id en minusculas cuando es alfanumerico.
   let manifest = '';
@@ -45,8 +50,15 @@ function isValidSignature(request: Request, dataId: string | null): boolean {
 
   const a = Buffer.from(expected, 'utf8');
   const b = Buffer.from(v1, 'utf8');
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  if (a.length === b.length && crypto.timingSafeEqual(a, b)) return null;
+
+  // Ni el manifest ni los hashes son secretos: el secreto es la clave con la
+  // que se calculan, y esa no se loguea. De los hashes alcanza el prefijo.
+  return (
+    `hash distinto | manifest="${manifest}" | ` +
+    `esperado=${expected.slice(0, 12)}... | recibido=${v1.slice(0, 12)}... | ` +
+    `x-request-id=${requestId ? 'presente' : 'ausente'}`
+  );
 }
 
 async function mpFetch(path: string) {
@@ -90,8 +102,9 @@ export async function POST(request: Request) {
   const dataId: string | null =
     url.searchParams.get('data.id') || url.searchParams.get('id') || body?.data?.id || body?.id || null;
 
-  if (!isValidSignature(request, dataId)) {
-    console.warn('[mp-webhook] Firma invalida, notificacion descartada');
+  const signatureError = checkSignature(request, dataId);
+  if (signatureError) {
+    console.warn('[mp-webhook] Firma invalida, notificacion descartada:', signatureError);
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
