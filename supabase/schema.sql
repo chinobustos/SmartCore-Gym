@@ -31,11 +31,11 @@ CREATE TABLE IF NOT EXISTS members (
   dni TEXT NOT NULL,
   plan TEXT NOT NULL, -- 'monthly', 'quarterly', 'daily'
   status TEXT NOT NULL DEFAULT 'active', -- 'active', 'inactive', 'expired'
-  startDate DATE DEFAULT CURRENT_DATE,
+  "startDate" DATE DEFAULT CURRENT_DATE,
   email TEXT NOT NULL,
   phone TEXT,
   avatar TEXT, -- Initials or URL
-  autoRenew BOOLEAN DEFAULT FALSE,
+  "autoRenew" BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -43,14 +43,14 @@ CREATE TABLE IF NOT EXISTS members (
 CREATE TABLE IF NOT EXISTS payments (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE,
-  memberId UUID REFERENCES members(id) ON DELETE CASCADE,
-  memberName TEXT NOT NULL,
+  "memberId" UUID REFERENCES members(id) ON DELETE CASCADE,
+  "memberName" TEXT NOT NULL,
   amount NUMERIC NOT NULL,
   date DATE DEFAULT CURRENT_DATE,
-  dueDate DATE NOT NULL,
+  "dueDate" DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending', -- 'paid', 'pending', 'overdue'
   plan TEXT NOT NULL,
-  autoRenew BOOLEAN DEFAULT FALSE,
+  "autoRenew" BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS inventory (
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   stock INTEGER NOT NULL DEFAULT 0,
-  minStock INTEGER NOT NULL DEFAULT 5,
+  "minStock" INTEGER NOT NULL DEFAULT 5,
   price NUMERIC NOT NULL DEFAULT 0,
   unit TEXT NOT NULL DEFAULT 'unidades',
   created_at TIMESTAMPTZ DEFAULT NOW()
@@ -71,10 +71,10 @@ CREATE TABLE IF NOT EXISTS inventory (
 CREATE TABLE IF NOT EXISTS attendance (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE,
-  memberId UUID REFERENCES members(id) ON DELETE SET NULL,
-  memberName TEXT NOT NULL,
-  memberPlan TEXT NOT NULL,
-  checkInTime TEXT NOT NULL, -- Format HH:mm
+  "memberId" UUID REFERENCES members(id) ON DELETE SET NULL,
+  "memberName" TEXT NOT NULL,
+  "memberPlan" TEXT NOT NULL,
+  "checkInTime" TEXT NOT NULL, -- Format HH:mm
   date DATE DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   description TEXT NOT NULL,
   type TEXT NOT NULL, -- 'income', 'expense'
   category TEXT NOT NULL,
-  paymentMethod TEXT,
+  "paymentMethod" TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -113,10 +113,10 @@ CREATE TABLE IF NOT EXISTS classes (
 CREATE TABLE IF NOT EXISTS bookings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   gym_id UUID REFERENCES gyms(id) ON DELETE CASCADE,
-  classId UUID REFERENCES classes(id) ON DELETE CASCADE,
-  memberId UUID REFERENCES members(id) ON DELETE CASCADE,
-  memberName TEXT NOT NULL,
-  bookingDate DATE DEFAULT CURRENT_DATE,
+  "classId" UUID REFERENCES classes(id) ON DELETE CASCADE,
+  "memberId" UUID REFERENCES members(id) ON DELETE CASCADE,
+  "memberName" TEXT NOT NULL,
+  "bookingDate" DATE DEFAULT CURRENT_DATE,
   status TEXT NOT NULL DEFAULT 'confirmed', -- 'confirmed', 'cancelled', 'attended'
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
