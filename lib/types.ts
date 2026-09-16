@@ -67,7 +67,6 @@ export interface Payment {
   status: PaymentStatus;
   plan: string;
   autoRenew?: boolean;
-  paymentLink?: string;
 }
 
 export interface AttendanceRecord {

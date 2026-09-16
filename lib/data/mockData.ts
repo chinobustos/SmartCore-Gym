@@ -19,13 +19,13 @@ export const mockMembers: Member[] = [
 export const mockPayments: Payment[] = [
   { id: '1', memberId: '1', memberName: 'Carlos Mendoza', amount: 12000, date: '2024-04-01', dueDate: '2024-05-01', status: 'paid', plan: 'Mensual', autoRenew: true },
   { id: '2', memberId: '2', memberName: 'Laura Fernández', amount: 30000, date: '2024-02-01', dueDate: '2024-05-01', status: 'paid', plan: 'Trimestral', autoRenew: true },
-  { id: '3', memberId: '3', memberName: 'Martín González', amount: 12000, date: '2024-03-10', dueDate: '2024-04-10', status: 'overdue', plan: 'Mensual', autoRenew: false, paymentLink: 'https://mpago.la/s/simulated-link-1' },
+  { id: '3', memberId: '3', memberName: 'Martín González', amount: 12000, date: '2024-03-10', dueDate: '2024-04-10', status: 'overdue', plan: 'Mensual', autoRenew: false },
   { id: '4', memberId: '4', memberName: 'Sofía Ramírez', amount: 1500, date: '2024-04-05', dueDate: '2024-04-06', status: 'paid', plan: 'Diario', autoRenew: false },
-  { id: '5', memberId: '5', memberName: 'Diego Torres', amount: 12000, date: '2024-03-20', dueDate: '2024-04-20', status: 'pending', plan: 'Mensual', autoRenew: false, paymentLink: 'https://mpago.la/s/simulated-link-2' },
+  { id: '5', memberId: '5', memberName: 'Diego Torres', amount: 12000, date: '2024-03-20', dueDate: '2024-04-20', status: 'pending', plan: 'Mensual', autoRenew: false },
   { id: '6', memberId: '6', memberName: 'Valentina López', amount: 12000, date: '2024-04-01', dueDate: '2024-05-01', status: 'paid', plan: 'Mensual', autoRenew: true },
   { id: '7', memberId: '7', memberName: 'Rodrigo Sánchez', amount: 12000, date: '2024-03-28', dueDate: '2024-04-28', status: 'paid', plan: 'Mensual', autoRenew: true },
-  { id: '8', memberId: '8', memberName: 'Camila Herrera', amount: 30000, date: '2024-01-08', dueDate: '2024-04-08', status: 'overdue', plan: 'Trimestral', autoRenew: false, paymentLink: 'https://mpago.la/s/simulated-link-3' },
-  { id: '9', memberId: '9', memberName: 'Federico Álvarez', amount: 12000, date: '2024-03-01', dueDate: '2024-04-01', status: 'overdue', plan: 'Mensual', autoRenew: false, paymentLink: 'https://mpago.la/s/simulated-link-4' },
+  { id: '8', memberId: '8', memberName: 'Camila Herrera', amount: 30000, date: '2024-01-08', dueDate: '2024-04-08', status: 'overdue', plan: 'Trimestral', autoRenew: false },
+  { id: '9', memberId: '9', memberName: 'Federico Álvarez', amount: 12000, date: '2024-03-01', dueDate: '2024-04-01', status: 'overdue', plan: 'Mensual', autoRenew: false },
   { id: '10', memberId: '10', memberName: 'Lucía Moreno', amount: 1500, date: '2024-04-10', dueDate: '2024-04-11', status: 'paid', plan: 'Diario', autoRenew: false },
 ];
 

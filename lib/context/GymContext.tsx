@@ -34,6 +34,7 @@ interface GymContextType {
   members: Member[];
   addMember: (member: Omit<Member, 'id'>) => Promise<void>;
   payments: Payment[];
+  registerPayment: (paymentId: string, paymentMethod: string) => Promise<void>;
   inventory: InventoryItem[];
   addInventoryItem: (item: Omit<InventoryItem, 'id'>) => Promise<void>;
   updateInventoryStock: (id: string, delta: number) => Promise<void>;
@@ -314,17 +315,61 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     setClasses(prev => prev.map(c => c.id === booking.classId ? { ...c, enrolled: Math.max(0, c.enrolled - 1) } : c));
   }, [bookings]);
 
+  /**
+   * Saldar una cuota que el socio pago en el mostrador. Mercado Pago cubre
+   * solo la suscripcion del gimnasio a SmartCore: los cobros al socio los
+   * carga el gimnasio a mano.
+   */
+  const registerPayment = useCallback(async (paymentId: string, paymentMethod: string) => {
+    const payment = payments.find(p => p.id === paymentId);
+    if (!payment) throw new Error('El pago ya no existe.');
+    if (payment.status === 'paid') return;
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { error } = await supabase
+      .from('payments')
+      .update({ status: 'paid', date: today })
+      .eq('id', paymentId);
+
+    if (error) {
+      console.error('Error registrando el pago en Supabase:', error);
+      throw new Error('No se pudo registrar el pago.');
+    }
+
+    setPayments(prev =>
+      prev.map(p => (p.id === paymentId ? { ...p, status: 'paid', date: today } : p))
+    );
+
+    // Finanzas se arma solo con `transactions`: sin este asiento el cobro
+    // quedaria saldado pero invisible en el balance del gimnasio.
+    await addTransaction({
+      amount: payment.amount,
+      date: new Date().toISOString(),
+      description: `Cuota de ${payment.memberName} (${payment.plan})`,
+      type: 'income',
+      category: 'Membresías',
+      paymentMethod,
+    });
+  }, [payments, addTransaction]);
+
   const toggleAutoRenew = useCallback(async (memberId: string) => {
     const member = members.find(m => m.id === memberId);
     if (!member) return;
 
     const newValue = !member.autoRenew;
-    const { error } = await supabase.from('members').update({ autoRenew: newValue }).eq('id', memberId);
-    
-    if (error) {
-      console.error('Error toggling autoRenew in Supabase:', error);
+
+    // La tabla de Membresias lee `autoRenew` de la fila de pago, no del socio:
+    // si solo actualizamos `members`, al recargar vuelve al valor viejo.
+    const [{ error }, { error: paymentsError }] = await Promise.all([
+      supabase.from('members').update({ autoRenew: newValue }).eq('id', memberId),
+      supabase.from('payments').update({ autoRenew: newValue }).eq('memberId', memberId),
+    ]);
+
+    if (error || paymentsError) {
+      console.error('Error toggling autoRenew in Supabase:', error || paymentsError);
     }
-    
+
     setMembers(prev => prev.map(m => m.id === memberId ? { ...m, autoRenew: newValue } : m));
     setPayments(prev => prev.map(p => p.memberId === memberId ? { ...p, autoRenew: newValue } : p));
   }, [members]);
@@ -334,7 +379,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       sidebarCollapsed, toggleSidebar,
       isLoading,
       members, addMember,
-      payments,
+      payments, registerPayment,
       inventory, addInventoryItem, updateInventoryStock, deleteInventoryItem,
       attendance, checkIn,
       classes, bookings, bookClass, cancelBooking, addClass,

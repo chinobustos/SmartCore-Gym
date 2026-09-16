@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Check, CircleAlert as AlertCircle, Clock, CreditCard, Star, RefreshCcw, ExternalLink, Plus, Pencil, Tag, FileDown } from 'lucide-react';
+import { Check, CircleAlert as AlertCircle, Clock, CreditCard, Star, RefreshCcw, Wallet, Plus, Pencil, Tag, FileDown } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
 import { EmptyState } from '@/components/ui/EmptyState';
 import PlanFormDialog, { formatDuration } from '@/components/memberships/PlanFormDialog';
+import RegisterPaymentDialog from '@/components/memberships/RegisterPaymentDialog';
 import { exportToExcel, datedFilename, EXCEL_FORMAT } from '@/lib/export/excel';
-import type { PaymentStatus, Plan } from '@/lib/types';
-import { cn, generatePaymentLink } from '@/lib/utils';
+import type { Payment, PaymentStatus, Plan } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 const PAYMENT_STATUS: Record<PaymentStatus, { label: string; style: string; icon: typeof Check }> = {
   paid: { label: 'Pagado', style: 'bg-emerald-400/15 text-emerald-400', icon: Check },
@@ -23,15 +24,12 @@ export default function MembershipsPage() {
   // `null` = cerrado. `{ plan: undefined }` = creando. `{ plan }` = editando.
   const [dialog, setDialog] = useState<{ plan?: Plan } | null>(null);
   const [exporting, setExporting] = useState(false);
+  // Pago cuya cuota se esta saldando. `null` = ningun dialogo abierto.
+  const [registering, setRegistering] = useState<Payment | null>(null);
 
   const totalRevenue = payments.filter(p => p.status === 'paid').reduce((s, p) => s + p.amount, 0);
   const pending = payments.filter(p => p.status === 'pending').length;
   const overdue = payments.filter(p => p.status === 'overdue').length;
-
-  const handleCopyLink = (link: string) => {
-    navigator.clipboard.writeText(link);
-    toast.success('Link de pago copiado al portapapeles');
-  };
 
   const handleExport = async () => {
     setExporting(true);
@@ -219,11 +217,11 @@ export default function MembershipsPage() {
                       <td className="px-5 py-4 text-right">
                         {p.status !== 'paid' && (
                           <button
-                            onClick={() => handleCopyLink(p.paymentLink || generatePaymentLink(p.memberId, p.amount))}
+                            onClick={() => setRegistering(p)}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
                           >
-                            <ExternalLink className="w-3 h-3" />
-                            Link de Pago
+                            <Wallet className="w-3 h-3" />
+                            Registrar pago
                           </button>
                         )}
                         {p.status === 'paid' && (
@@ -238,6 +236,16 @@ export default function MembershipsPage() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {registering && (
+          <RegisterPaymentDialog
+            key={registering.id}
+            payment={registering}
+            onClose={() => setRegistering(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {dialog && (
