@@ -7,6 +7,7 @@ import { Dumbbell, ArrowRight, ArrowLeft, Check, Sparkles, Building2, Clock, Shi
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LogoUpload } from '@/components/ui/logo-upload';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/lib/context/AuthContext';
 
@@ -255,13 +256,11 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="logoUrl" className="text-slate-200">URL del Logo (Opcional)</Label>
-                  <Input
+                  <Label htmlFor="logoUrl" className="text-slate-200">Logo del Gimnasio (Opcional)</Label>
+                  <LogoUpload
                     id="logoUrl"
-                    placeholder="https://..."
-                    className="bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-500 focus:border-primary"
                     value={formData.logoUrl}
-                    onChange={e => handleChange('logoUrl', e.target.value)}
+                    onChange={value => handleChange('logoUrl', value)}
                   />
                 </div>
               </motion.div>

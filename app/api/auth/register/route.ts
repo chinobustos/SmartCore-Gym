@@ -9,6 +9,22 @@ const PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || '';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+// El logo llega como data URI: el cliente lo reduce a 256px antes de enviarlo,
+// pero el endpoint es publico y no podemos confiar en eso.
+const MAX_LOGO_CHARS = 700 * 1024;
+const DATA_URI_IMAGE = /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/;
+
+function sanitizeLogo(logoUrl: unknown): { value: string | null; error?: string } {
+  if (typeof logoUrl !== 'string' || !logoUrl) return { value: null };
+  if (logoUrl.length > MAX_LOGO_CHARS) {
+    return { value: null, error: 'El logo es demasiado pesado.' };
+  }
+  if (DATA_URI_IMAGE.test(logoUrl) || /^https?:\/\//i.test(logoUrl)) {
+    return { value: logoUrl };
+  }
+  return { value: null, error: 'El formato del logo no es válido.' };
+}
+
 export async function POST(request: Request) {
   if (!SUPABASE_URL || !PUBLISHABLE_KEY || !SERVICE_ROLE_KEY) {
     console.error('[register] Faltan variables de entorno de Supabase');
@@ -24,6 +40,11 @@ export async function POST(request: Request) {
         { error: 'Email, contraseña y nombre del gimnasio son obligatorios.' },
         { status: 400 }
       );
+    }
+
+    const logo = sanitizeLogo(logoUrl);
+    if (logo.error) {
+      return NextResponse.json({ error: logo.error }, { status: 400 });
     }
 
     // Cliente publico: solo para el signUp, que es una operacion publica.
@@ -67,7 +88,7 @@ export async function POST(request: Request) {
         {
           name: gymName,
           rubro: rubro || 'Gimnasio General',
-          logo_url: logoUrl || null,
+          logo_url: logo.value,
           opening_hours: openingHours || { Lunes: '07:00 - 22:00', Viernes: '07:00 - 22:00' },
           subscription_status: 'trialing',
           trial_ends_at: trialEndsAt.toISOString(),
