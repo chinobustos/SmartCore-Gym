@@ -86,9 +86,12 @@ graph TD
    MERCADOPAGO_ACCESS_TOKEN=tu_access_token
    MERCADOPAGO_WEBHOOK_SECRET=la_clave_secreta_del_webhook
 
-   # Aviso por mail de fin de prueba (Resend)
-   RESEND_API_KEY=tu_api_key_de_resend
-   RESEND_FROM=SmartCore Gym <no-reply@tu-dominio>
+   # Aviso por mail de fin de prueba (SMTP de Gmail)
+   # GMAIL_APP_PASSWORD es una contraseña de aplicación de Google (16 letras),
+   # NO la del correo. Requiere verificación en dos pasos activada.
+   GMAIL_USER=tu_cuenta@gmail.com
+   GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
+   EMAIL_FROM_NAME=SmartCore Gym
    # Protege /api/cron/trial-reminders. Vercel manda este valor solo.
    CRON_SECRET=una_cadena_larga_al_azar
 

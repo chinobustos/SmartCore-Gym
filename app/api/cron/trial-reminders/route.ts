@@ -34,7 +34,7 @@ export async function GET(request: Request) {
   }
 
   if (!emailConfigurado()) {
-    console.error('[cron] Falta RESEND_API_KEY');
+    console.error('[cron] Faltan GMAIL_USER / GMAIL_APP_PASSWORD');
     return NextResponse.json({ error: 'Email not configured' }, { status: 500 });
   }
 

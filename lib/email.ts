@@ -1,12 +1,24 @@
-// Envio de mails con Resend.
+// Envio de mails por el SMTP de Gmail.
 //
-// Se habla con la API por fetch en vez de sumar el SDK: es un unico POST y
-// asi el proyecto no gana una dependencia mas para eso.
+// Se eligio Gmail y no un servicio tipo Resend o Brevo por una razon concreta:
+// sin un dominio propio verificado, esos servicios obligan a mandar desde una
+// direccion @gmail.com que ellos no estan autorizados a usar, el DMARC de
+// gmail.com no alinea y los avisos terminan en spam. Con el SMTP de Gmail se
+// manda autenticado como la cuenta, asi que el SPF y el DKIM son los de Google
+// y el mail llega. Ademas es gratis y no hace falta comprar nada.
+//
+// El limite de Gmail es de unos 500 destinatarios por dia, de sobra para avisos
+// de fin de prueba. Si algun dia se pasa de ahi, hay que mover esto a un
+// servicio con dominio propio: toda la app entra por `sendEmail`, asi que el
+// cambio queda contenido en este archivo.
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const RESEND_FROM = process.env.RESEND_FROM || 'SmartCore Gym <onboarding@resend.dev>';
+import nodemailer, { type Transporter } from 'nodemailer';
 
-const RESEND_API = 'https://api.resend.com/emails';
+const GMAIL_USER = process.env.GMAIL_USER || '';
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD || '';
+// Nombre que ve el destinatario. La direccion sigue siendo la de GMAIL_USER:
+// Gmail no deja falsear el remitente.
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'SmartCore Gym';
 
 export interface SendEmailParams {
   to: string;
@@ -21,36 +33,49 @@ export interface SendEmailResult {
 }
 
 export function emailConfigurado(): boolean {
-  return !!RESEND_API_KEY;
+  return !!GMAIL_USER && !!GMAIL_APP_PASSWORD;
+}
+
+let transporter: Transporter | null = null;
+
+/**
+ * El transporte se reusa entre invocaciones: en una funcion serverless que
+ * manda varios mails seguidos, abrir una conexion SMTP por mail es tiempo
+ * regalado. `pool` mantiene la conexion viva dentro de la misma invocacion.
+ */
+function getTransporter(): Transporter {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      pool: true,
+      auth: {
+        user: GMAIL_USER,
+        // Es una contraseña de aplicacion de Google, no la del mail. Requiere
+        // tener la verificacion en dos pasos activada en la cuenta.
+        pass: GMAIL_APP_PASSWORD,
+      },
+    });
+  }
+  return transporter;
 }
 
 export async function sendEmail({ to, subject, html }: SendEmailParams): Promise<SendEmailResult> {
-  if (!RESEND_API_KEY) {
-    return { ok: false, error: 'RESEND_API_KEY no está configurada.' };
+  if (!emailConfigurado()) {
+    return { ok: false, error: 'Faltan GMAIL_USER / GMAIL_APP_PASSWORD.' };
   }
 
   try {
-    const res = await fetch(RESEND_API, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html }),
-      cache: 'no-store',
+    const info = await getTransporter().sendMail({
+      from: `"${EMAIL_FROM_NAME}" <${GMAIL_USER}>`,
+      to,
+      subject,
+      html,
     });
 
-    const data = await res.json().catch(() => null);
-
-    if (!res.ok) {
-      const detail = data?.message || `HTTP ${res.status}`;
-      console.error('[email] Resend rechazo el envio:', detail);
-      return { ok: false, error: detail };
-    }
-
-    return { ok: true, id: data?.id };
+    return { ok: true, id: info.messageId };
   } catch (err: any) {
-    console.error('[email] Error de red enviando el mail:', err);
+    // El error de Gmail incluye la direccion de origen, no la clave.
+    console.error('[email] No se pudo enviar:', err?.message ?? err);
     return { ok: false, error: err?.message ?? String(err) };
   }
 }
