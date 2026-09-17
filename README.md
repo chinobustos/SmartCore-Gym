@@ -74,10 +74,25 @@ graph TD
    ```
 
 3. **Configurar variables de entorno**
-   Renombra el archivo `.env` a `.env.local` (o créalo si no existe) y configura tus variables de Supabase:
+   Renombra el archivo `.env` a `.env.local` (o créalo si no existe) y configura:
    ```env
+   # Supabase
    NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
+   # Solo servidor: escribe el estado de la suscripción. Nunca la expongas.
+   SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
+
+   # Mercado Pago (suscripción del gimnasio a SmartCore)
+   MERCADOPAGO_ACCESS_TOKEN=tu_access_token
+   MERCADOPAGO_WEBHOOK_SECRET=la_clave_secreta_del_webhook
+
+   # Aviso por mail de fin de prueba (Resend)
+   RESEND_API_KEY=tu_api_key_de_resend
+   RESEND_FROM=SmartCore Gym <no-reply@tu-dominio>
+   # Protege /api/cron/trial-reminders. Vercel manda este valor solo.
+   CRON_SECRET=una_cadena_larga_al_azar
+
+   NEXT_PUBLIC_SITE_URL=https://tu-dominio
    ```
 
 4. **Ejecutar en entorno de desarrollo**

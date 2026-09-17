@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Calendar as CalendarIcon, Users, Clock, Search, Filter, Plus, ChevronRight } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
+import { useWriteGate } from '@/lib/hooks/useWriteGate';
 import BookingModal from '@/components/classes/BookingModal';
 import CreateClassModal from '@/components/classes/CreateClassModal';
 import type { GymClass } from '@/lib/types';
@@ -16,6 +17,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 
 export default function ClassesPage() {
     const { classes, isLoading, globalSearch, setGlobalSearch } = useGym();
+
+    const { writeProps } = useWriteGate();
     const [search, setSearch] = useState('');
     const [selectedClass, setSelectedClass] = useState<GymClass | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -76,7 +79,8 @@ export default function ClassesPage() {
                     </button>
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/10"
+                        {...writeProps}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 transition-all shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                     >
                         <Plus className="w-4 h-4" />
                         <span className="hidden sm:inline">Nueva Clase</span>

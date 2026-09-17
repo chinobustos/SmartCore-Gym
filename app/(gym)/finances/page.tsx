@@ -3,6 +3,7 @@
 import { Wallet, ArrowDownRight, ArrowUpRight, Search, Plus, CreditCard, Calendar, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useGym } from '@/lib/context/GymContext';
+import { useWriteGate } from '@/lib/hooks/useWriteGate';
 import { exportToExcel, datedFilename, EXCEL_FORMAT } from '@/lib/export/excel';
 import { cn } from '@/lib/utils';
 import { useState, useMemo } from 'react';
@@ -14,6 +15,8 @@ import AddTransactionModal from '@/components/finances/AddTransactionModal';
 
 export default function FinancesPage() {
   const { transactions, isLoading, globalSearch, setGlobalSearch } = useGym();
+
+  const { writeProps } = useWriteGate();
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -182,7 +185,8 @@ export default function FinancesPage() {
             <h2 className="text-xl font-bold text-foreground">Tus Movimientos</h2>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20"
+              {...writeProps}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
               <Plus className="w-4 h-4" />
               Nuevo

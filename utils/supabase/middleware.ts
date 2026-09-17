@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { accessLevelFor } from "@/lib/access";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -57,7 +58,12 @@ export const updateSession = async (request: NextRequest) => {
     return NextResponse.redirect(url);
   }
 
-  // Evaluate Gym Subscription Status for Authenticated Users
+  // Nivel de acceso del gimnasio.
+  //
+  // Antes esto pateaba a /billing apenas vencia la suscripcion, y con eso el
+  // modo lectura no existia: el cliente no llegaba ni a ver sus datos. Ahora
+  // solo se redirige cuando el acceso esta cerrado del todo (mas de 60 dias
+  // vencido). En modo lectura se navega normal y la escritura la frena la RLS.
   if (user && !isBillingPage && !isApiRoute && !isPublicPage) {
     try {
       const { data: profile } = await supabase
@@ -69,20 +75,21 @@ export const updateSession = async (request: NextRequest) => {
       if (profile?.gym_id) {
         const { data: gym } = await supabase
           .from('gyms')
-          .select('subscription_status, trial_ends_at')
+          .select('subscription_status, trial_ends_at, current_period_end')
           .eq('id', profile.gym_id)
           .single();
 
         if (gym) {
-          const now = new Date();
-          const trialEnd = gym.trial_ends_at ? new Date(gym.trial_ends_at) : new Date(0);
-          const isTrialExpired = gym.subscription_status === 'trialing' && now > trialEnd;
-          const isPastDueOrCanceled = gym.subscription_status === 'past_due' || gym.subscription_status === 'canceled';
+          const nivel = accessLevelFor({
+            subscriptionStatus: gym.subscription_status,
+            trialEndsAt: gym.trial_ends_at,
+            currentPeriodEnd: gym.current_period_end,
+          });
 
-          if (isTrialExpired || isPastDueOrCanceled) {
+          if (nivel === 'locked') {
             const url = request.nextUrl.clone();
             url.pathname = '/billing';
-            url.searchParams.set('reason', 'expired');
+            url.searchParams.set('reason', 'locked');
             return NextResponse.redirect(url);
           }
         }

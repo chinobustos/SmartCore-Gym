@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { Member, Payment, InventoryItem, AttendanceRecord, GymClass, Booking, Transaction, Plan, PlanInput } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -59,8 +59,27 @@ interface GymContextType {
 
 const GymContext = createContext<GymContextType | null>(null);
 
+/**
+ * Mensaje unico para cuando la cuenta esta en modo lectura.
+ *
+ * El guard corta antes de tocar la base, y de paso tapa un agujero viejo:
+ * `addMember` y `addTransaction` se tragaban el error de Supabase y caian a
+ * estado local, asi que una escritura rechazada se veia en pantalla como si
+ * hubiera funcionado. Con el corte previo eso ya no puede pasar.
+ */
+export const READ_ONLY_MSG =
+  'Tu cuenta está en modo lectura. Activá la suscripción para volver a cargar datos.';
+
 export function GymProvider({ children }: { children: React.ReactNode }) {
-  const { gymId } = useAuth();
+  const { gymId, canWrite } = useAuth();
+
+  // Por referencia y no por dependencia: si `canWrite` entrara en los arrays de
+  // las 14 funciones de escritura, cada una se recrearia al vencer la prueba.
+  // Con el ref no hay closures viejas ni churn de dependencias.
+  const canWriteRef = useRef(canWrite);
+  useEffect(() => {
+    canWriteRef.current = canWrite;
+  }, [canWrite]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [members, setMembers] = useState<Member[]>([]);
@@ -137,6 +156,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useCallback(() => setSidebarCollapsed(p => !p), []);
 
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...transaction, gym_id: gymId } : transaction;
     const { data, error } = await supabase.from('transactions').insert([payload]).select();
     if (error) {
@@ -148,6 +168,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const addPlan = useCallback(async (plan: PlanInput) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     if (!gymId) throw new Error('No hay un gimnasio activo.');
     const { data, error } = await supabase
       .from('membership_plans')
@@ -162,6 +183,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const updatePlan = useCallback(async (id: string, plan: PlanInput) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const { data, error } = await supabase
       .from('membership_plans')
       .update(planToRow(plan))
@@ -176,6 +198,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deletePlan = useCallback(async (id: string) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const { error } = await supabase.from('membership_plans').delete().eq('id', id);
     if (error) {
       console.error('[plans] Error eliminando el plan:', error);
@@ -185,6 +208,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addMember = useCallback(async (member: Omit<Member, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...member, gym_id: gymId } : member;
     const { data, error } = await supabase.from('members').insert([payload]).select();
     if (error) {
@@ -210,6 +234,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId, addTransaction]);
 
   const addInventoryItem = useCallback(async (item: Omit<InventoryItem, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...item, gym_id: gymId } : item;
     const { data, error } = await supabase.from('inventory').insert([payload]).select();
     if (error) {
@@ -221,6 +246,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const updateInventoryStock = useCallback(async (id: string, delta: number) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const item = inventory.find(i => i.id === id);
     if (!item) return;
 
@@ -258,6 +284,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [inventory, addTransaction]);
 
   const deleteInventoryItem = useCallback(async (id: string) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const { error } = await supabase.from('inventory').delete().eq('id', id);
     if (error) {
       console.error('Error deleting inventory item from Supabase:', error);
@@ -266,6 +293,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkIn = useCallback(async (record: Omit<AttendanceRecord, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...record, gym_id: gymId } : record;
     const { data, error } = await supabase.from('attendance').insert([payload]).select();
     if (error) {
@@ -277,6 +305,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const addClass = useCallback(async (gymClass: Omit<GymClass, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...gymClass, gym_id: gymId } : gymClass;
     const { data, error } = await supabase.from('classes').insert([payload]).select();
     if (error) {
@@ -289,6 +318,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const bookClass = useCallback(async (booking: Omit<Booking, 'id'>) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payload = gymId ? { ...booking, gym_id: gymId } : booking;
     const { data, error } = await supabase.from('bookings').insert([payload]).select();
     if (error) {
@@ -303,6 +333,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [gymId]);
 
   const cancelBooking = useCallback(async (id: string) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const booking = bookings.find(b => b.id === id);
     if (!booking) return;
 
@@ -321,6 +352,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
    * carga el gimnasio a mano.
    */
   const registerPayment = useCallback(async (paymentId: string, paymentMethod: string) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const payment = payments.find(p => p.id === paymentId);
     if (!payment) throw new Error('El pago ya no existe.');
     if (payment.status === 'paid') return;
@@ -354,6 +386,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
   }, [payments, addTransaction]);
 
   const toggleAutoRenew = useCallback(async (memberId: string) => {
+    if (!canWriteRef.current) throw new Error(READ_ONLY_MSG);
     const member = members.find(m => m.id === memberId);
     if (!member) return;
 

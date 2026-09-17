@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { Search, CircleCheck as CheckCircle2, Clock, Users } from 'lucide-react';
-import { useGym } from '@/lib/context/GymContext';
+import { useGym, READ_ONLY_MSG } from '@/lib/context/GymContext';
+import { useWriteGate } from '@/lib/hooks/useWriteGate';
+import { toast } from 'sonner';
 import type { Member } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +12,7 @@ const PLAN_LABELS: Record<string, string> = { daily: 'Pase Diario', monthly: 'Me
 
 export default function AttendancePage() {
   const { members, attendance, checkIn, isLoading } = useGym();
+  const { canWrite } = useWriteGate();
   const [search, setSearch] = useState('');
   const [activityCount, setActivityCount] = useState(0);
   const [checkedIn, setCheckedIn] = useState<null | string>(null);
@@ -36,12 +39,18 @@ export default function AttendancePage() {
   const handleCheckIn = (member: Member) => {
     const alreadyIn = todayAttendance.some(a => a.memberId === member.id);
     if (alreadyIn) return;
+    if (!canWrite) return;
+    // El `catch` no es decorativo: sin await, lo que tire `checkIn` terminaria
+    // como una promesa rechazada sin manejar.
     checkIn({
       memberId: member.id,
       memberName: member.name,
       memberPlan: PLAN_LABELS[member.plan],
       checkInTime: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
       date: today,
+    }).catch(err => {
+      console.error('[attendance] No se pudo registrar el ingreso:', err);
+      toast.error(err?.message ?? 'No se pudo registrar el ingreso.');
     });
     setCheckedIn(member.id);
     setSearch('');
@@ -92,10 +101,11 @@ export default function AttendancePage() {
                 <button
                   key={member.id}
                   onClick={() => handleCheckIn(member)}
-                  disabled={alreadyIn}
+                  disabled={alreadyIn || !canWrite}
+                  title={canWrite ? undefined : READ_ONLY_MSG}
                   className={cn(
                     'w-full flex items-center justify-between p-4 rounded-xl border transition-all text-left',
-                    alreadyIn
+                    alreadyIn || !canWrite
                       ? 'bg-secondary/50 border-border opacity-60 cursor-not-allowed'
                       : 'bg-secondary border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer'
                   )}

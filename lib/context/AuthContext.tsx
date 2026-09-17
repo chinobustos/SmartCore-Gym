@@ -1,9 +1,16 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Gym, GymUser } from '@/lib/types';
+import {
+  accessLevelFor,
+  enPruebaVigente,
+  graceDaysLeft,
+  trialDaysLeft,
+  type AccessLevel,
+} from '@/lib/access';
 
 interface User {
   id: string;
@@ -18,6 +25,14 @@ interface AuthContextType {
   gym: Gym | null;
   gymId: string | null;
   isLoading: boolean;
+  /** Espejo de `gym_access_level()` en la base, para que la UI se anticipe. */
+  accessLevel: AccessLevel;
+  canWrite: boolean;
+  /** Dias que faltan para que termine la prueba. 0 si ya vencio o no aplica. */
+  trialDaysLeft: number;
+  enPrueba: boolean;
+  /** Dias que faltan para que se cierre el acceso a los datos. */
+  graceDaysLeft: number;
   login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
   refreshGym: () => Promise<void>;
@@ -161,6 +176,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   }, [router]);
 
+  // Se recalcula cuando cambia el gym, no con un timer: un cliente que deja la
+  // pestaña abierta el dia que se le vence la prueba sigue viendo el nivel
+  // viejo hasta que recargue, pero la base ya lo bloquea igual. El nivel de la
+  // UI es una cortesia, no el candado.
+  const acceso = useMemo(() => {
+    // Mientras no sepamos nada del gimnasio no bloqueamos: si no, en cada carga
+    // parpadea un "cuenta cerrada" que no es cierto. El candado real esta en la
+    // RLS, asi que ser permisivo aca no abre nada.
+    if (!gym) {
+      return { accessLevel: 'full' as AccessLevel, trialDaysLeft: 0, enPrueba: false, graceDaysLeft: 0 };
+    }
+
+    const ahora = new Date();
+    return {
+      accessLevel: accessLevelFor(gym, ahora),
+      trialDaysLeft: trialDaysLeft(gym, ahora),
+      enPrueba: enPruebaVigente(gym, ahora),
+      graceDaysLeft: graceDaysLeft(gym, ahora),
+    };
+  }, [gym]);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -168,6 +204,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       gym,
       gymId: gymUser?.gymId || null,
       isLoading,
+      accessLevel: acceso.accessLevel,
+      canWrite: acceso.accessLevel === 'full',
+      trialDaysLeft: acceso.trialDaysLeft,
+      enPrueba: acceso.enPrueba,
+      graceDaysLeft: acceso.graceDaysLeft,
       login,
       logout,
       refreshGym

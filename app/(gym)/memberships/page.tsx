@@ -5,6 +5,7 @@ import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Check, CircleAlert as AlertCircle, Clock, CreditCard, Star, RefreshCcw, Wallet, Plus, Pencil, Tag, FileDown } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
+import { useWriteGate } from '@/lib/hooks/useWriteGate';
 import { EmptyState } from '@/components/ui/EmptyState';
 import PlanFormDialog, { formatDuration } from '@/components/memberships/PlanFormDialog';
 import RegisterPaymentDialog from '@/components/memberships/RegisterPaymentDialog';
@@ -20,6 +21,8 @@ const PAYMENT_STATUS: Record<PaymentStatus, { label: string; style: string; icon
 
 export default function MembershipsPage() {
   const { payments, plans, toggleAutoRenew } = useGym();
+
+  const { writeProps } = useWriteGate();
 
   // `null` = cerrado. `{ plan: undefined }` = creando. `{ plan }` = editando.
   const [dialog, setDialog] = useState<{ plan?: Plan } | null>(null);
@@ -107,7 +110,8 @@ export default function MembershipsPage() {
             </button>
             <button
               onClick={() => setDialog({})}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              {...writeProps}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-4 h-4" />
               Nuevo Plan
@@ -218,7 +222,8 @@ export default function MembershipsPage() {
                         {p.status !== 'paid' && (
                           <button
                             onClick={() => setRegistering(p)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all"
+                            {...writeProps}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary/10 disabled:hover:text-primary"
                           >
                             <Wallet className="w-3 h-3" />
                             Registrar pago

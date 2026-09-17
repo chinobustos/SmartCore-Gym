@@ -4,6 +4,8 @@ import { GymProvider } from '@/lib/context/GymContext';
 import Sidebar from '@/components/layout/Sidebar';
 import TopBar from '@/components/layout/TopBar';
 import OnboardingWizard from '@/components/onboarding/OnboardingWizard';
+import SubscriptionBanner from '@/components/billing/SubscriptionBanner';
+import TrialEndedDialog from '@/components/billing/TrialEndedDialog';
 import { usePathname } from 'next/navigation';
 import { Suspense } from 'react';
 
@@ -30,11 +32,15 @@ export default function GymLayout({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <TopBar />
+          {/* Fuera del <main> con scroll: el contador tiene que seguir a la
+              vista aunque la pantalla este scrolleada hasta abajo. */}
+          <SubscriptionBanner />
           <main className="flex-1 overflow-y-auto scrollbar-thin p-6">
             {children}
           </main>
         </div>
       </div>
+      <TrialEndedDialog />
       {/* Suspense acota a este subárbol la deopt a client-side rendering que
           provoca useSearchParams() dentro del wizard */}
       <Suspense fallback={null}>

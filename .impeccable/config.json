@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-09-14T23:45:22.681Z",
         "reason": "text-slate-950 sobre bg-sky-500: negro sobre acento brillante, contraste alto e intencional; no es gris lavado"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "components/billing/TrialEndedDialog.tsx"
+        ],
+        "createdAt": "2026-09-17T22:03:19.640Z",
+        "reason": "text-slate-950 sobre bg-sky-500 es casi negro sobre azul, no gris lavado; es el mismo boton ya establecido en app/(gym)/billing/page.tsx:366"
       }
     ]
   }

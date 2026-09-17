@@ -2,6 +2,7 @@
 
 import { Minus, Plus, Package, AlertTriangle, TrendingDown, Trash2 } from 'lucide-react';
 import { useGym } from '@/lib/context/GymContext';
+import { useWriteGate } from '@/lib/hooks/useWriteGate';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +39,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export default function InventoryPage() {
   const { inventory, updateInventoryStock, deleteInventoryItem, isLoading, globalSearch, setGlobalSearch } = useGym();
+
+  const { writeProps } = useWriteGate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
 
@@ -118,7 +121,8 @@ export default function InventoryPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 whitespace-nowrap self-stretch sm:self-center"
+          {...writeProps}
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 whitespace-nowrap self-stretch sm:self-center disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           <Plus className="w-5 h-5" />
           Agregar Producto
