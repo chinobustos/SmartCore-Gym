@@ -1,15 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, CheckCircle2, ShieldCheck, Zap, AlertTriangle, Clock, Calendar, Sparkles } from 'lucide-react';
+import {
+  CreditCard,
+  CheckCircle2,
+  ShieldCheck,
+  Zap,
+  AlertTriangle,
+  Clock,
+  Calendar,
+  Sparkles,
+  RefreshCw,
+  Ban,
+} from 'lucide-react';
 
 export default function BillingPage() {
-  const { gym, gymId, user } = useAuth();
+  const { gym, refreshGym } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [msg, setMsg] = useState('');
   const [error, setError] = useState('');
 
@@ -23,24 +37,80 @@ export default function BillingPage() {
 
   const daysLeft = calculateTrialDaysLeft();
   const status = gym?.subscriptionStatus || 'trialing';
+  const trialExpirada = status === 'trialing' && daysLeft === 0;
+  const bloqueado = status === 'past_due' || status === 'canceled' || trialExpirada;
+
+  /**
+   * Le vuelve a preguntar a Mercado Pago en que estado esta la suscripcion.
+   * Es la salida para cuando la notificacion de MP no llega: sin esto el
+   * gimnasio paga y se queda bloqueado sin poder hacer nada.
+   */
+  const syncSubscription = useCallback(
+    async (silencioso = false) => {
+      setSyncing(true);
+      if (!silencioso) {
+        setMsg('');
+        setError('');
+      }
+      try {
+        const res = await fetch('/api/mercadopago/sync', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No pudimos consultar Mercado Pago.');
+
+        await refreshGym();
+
+        // En el chequeo automatico al volver del checkout solo avisamos si hubo
+        // novedad: un cartel de "no habia nada nuevo" que nadie pidio confunde.
+        if (data.applied || !silencioso) setMsg(data.message);
+      } catch (err: any) {
+        if (!silencioso) setError(err.message || 'No pudimos consultar Mercado Pago.');
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [refreshGym]
+  );
+
+  // Vuelta del checkout. `useSearchParams` obligaria a envolver la pagina en un
+  // Suspense para que compile; la query se lee igual desde el navegador.
+  const yaReconcilio = useRef(false);
+  useEffect(() => {
+    if (yaReconcilio.current) return;
+    const params = new URLSearchParams(window.location.search);
+
+    if (params.get('reason') === 'expired') {
+      setError('Tu acceso está pausado hasta que regularices la suscripción.');
+    }
+
+    if (params.get('status')) {
+      yaReconcilio.current = true;
+      // Mercado Pago devuelve al usuario antes de mandar la notificacion, asi
+      // que preguntamos nosotros en vez de mostrarle un estado viejo.
+      setMsg('Confirmando tu pago con Mercado Pago...');
+      syncSubscription(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [syncSubscription]);
 
   const handleSubscribe = async () => {
     setLoading(true);
     setMsg('');
     setError('');
     try {
-      const res = await fetch('/api/mercadopago/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          gymId: gymId || gym?.id,
-          gymName: gym?.name || 'Mi Gimnasio',
-          email: user?.email,
-        }),
-      });
-
+      // Sin body: el gimnasio, el email y el monto los resuelve el servidor
+      // desde la sesion.
+      const res = await fetch('/api/mercadopago/subscribe', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al conectar con Mercado Pago');
+
+      if (!res.ok) {
+        // Ya estaba paga: el servidor aprovecho y puso la cuenta al dia.
+        if (data.alreadyActive) {
+          await refreshGym();
+          setMsg(data.error);
+          return;
+        }
+        throw new Error(data.error || 'Error al conectar con Mercado Pago');
+      }
 
       if (!data.init_point) throw new Error('Mercado Pago no devolvió un link de pago.');
 
@@ -51,6 +121,24 @@ export default function BillingPage() {
       setError(err.message || 'Error al procesar la suscripción.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setCanceling(true);
+    setMsg('');
+    setError('');
+    try {
+      const res = await fetch('/api/mercadopago/cancel', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No pudimos cancelar la suscripción.');
+      await refreshGym();
+      setMsg(data.message);
+      setConfirmCancel(false);
+    } catch (err: any) {
+      setError(err.message || 'No pudimos cancelar la suscripción.');
+    } finally {
+      setCanceling(false);
     }
   };
 
@@ -65,7 +153,6 @@ export default function BillingPage() {
           Gestiona el estado de tu cuenta de SmartCore Gym y tu suscripción activa.
         </p>
       </div>
-
 
       {msg && (
         <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm font-medium flex items-center gap-2">
@@ -91,9 +178,14 @@ export default function BillingPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-xl">Estado de la Cuenta</CardTitle>
-              {status === 'trialing' && (
+              {status === 'trialing' && !trialExpirada && (
                 <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 px-3 py-1 text-xs">
                   Prueba Gratuita (14 Días)
+                </Badge>
+              )}
+              {trialExpirada && (
+                <Badge className="bg-red-500/20 text-red-300 border-red-500/30 px-3 py-1 text-xs">
+                  Prueba Vencida
                 </Badge>
               )}
               {status === 'active' && (
@@ -106,13 +198,18 @@ export default function BillingPage() {
                   Pago Vencido
                 </Badge>
               )}
+              {status === 'canceled' && (
+                <Badge className="bg-slate-500/20 text-slate-300 border-slate-500/30 px-3 py-1 text-xs">
+                  Suscripción Cancelada
+                </Badge>
+              )}
             </div>
             <CardDescription className="text-slate-400">
               Gimnasio: <strong className="text-slate-200">{gym?.name || 'Cargando...'}</strong>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {status === 'trialing' && (
+            {status === 'trialing' && !trialExpirada && (
               <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Clock className="h-8 w-8 text-amber-400" />
@@ -140,14 +237,15 @@ export default function BillingPage() {
               </div>
             )}
 
-            {status === 'past_due' && (
+            {bloqueado && (
               <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <AlertTriangle className="h-8 w-8 text-red-400" />
                   <div>
-                    <h4 className="font-semibold text-red-200">Acceso Bloqueado por Falta de Pago</h4>
+                    <h4 className="font-semibold text-red-200">Operación Pausada</h4>
                     <p className="text-xs text-red-300/80">
-                      Suscribe tu cuenta para reactivar el uso de todas las herramientas operativas.
+                      Podés seguir consultando tu información, pero no cargar movimientos nuevos
+                      hasta que la suscripción esté al día.
                     </p>
                   </div>
                 </div>
@@ -173,6 +271,62 @@ export default function BillingPage() {
                 </span>
               </div>
             </div>
+
+            {/* Salida para cuando la notificacion de MP se pierde. */}
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-800">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => syncSubscription(false)}
+                disabled={syncing}
+                className="border-slate-700 bg-slate-950/60 text-slate-200 hover:bg-slate-800"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Consultando...' : 'Ya pagué, verificar'}
+              </Button>
+              <span className="text-xs text-slate-500">
+                Si pagaste y la cuenta sigue sin actualizarse, consultá a Mercado Pago desde acá.
+              </span>
+            </div>
+
+            {status === 'active' && (
+              <div className="flex flex-wrap items-center gap-3">
+                {!confirmCancel ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setConfirmCancel(true)}
+                    className="text-slate-400 hover:text-red-300 hover:bg-red-500/10 px-2"
+                  >
+                    <Ban className="h-4 w-4 mr-2" />
+                    Cancelar suscripción
+                  </Button>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg border border-red-500/30 bg-red-500/5 w-full">
+                    <span className="text-xs text-red-200 mr-auto">
+                      Se da de baja el débito automático en Mercado Pago. ¿Confirmás?
+                    </span>
+                    <Button
+                      type="button"
+                      onClick={handleCancel}
+                      disabled={canceling}
+                      className="bg-red-500 hover:bg-red-400 text-slate-950 font-semibold"
+                    >
+                      {canceling ? 'Cancelando...' : 'Sí, dar de baja'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setConfirmCancel(false)}
+                      disabled={canceling}
+                      className="text-slate-300"
+                    >
+                      Volver
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -208,13 +362,12 @@ export default function BillingPage() {
           <CardFooter>
             <Button
               onClick={handleSubscribe}
-              disabled={loading}
-              className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold shadow-lg py-6 text-base"
+              disabled={loading || status === 'active'}
+              className="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold shadow-lg py-6 text-base disabled:opacity-50"
             >
-              {loading ? 'Cargando...' : 'Suscribirme'}
+              {status === 'active' ? 'Suscripción activa' : loading ? 'Cargando...' : 'Suscribirme'}
             </Button>
           </CardFooter>
-
         </Card>
       </div>
     </div>

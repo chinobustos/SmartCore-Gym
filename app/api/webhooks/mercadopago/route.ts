@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { createClient } from '@supabase/supabase-js';
+import { getPreapproval, getPreapprovalFromAuthorizedPayment, type Preapproval } from '@/lib/mercadopago';
+import { applyPreapprovalToGym, createAdminClient, logWebhookEvent } from '@/lib/subscription';
 
 // Este webhook necesita Node (crypto) y la service role key: nunca Edge.
 export const runtime = 'nodejs';
 
 const MP_ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN || '';
 const MP_WEBHOOK_SECRET = process.env.MERCADOPAGO_WEBHOOK_SECRET || '';
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-
-const MP_API = 'https://api.mercadopago.com';
 
 /**
  * Valida la firma del header `x-signature` de Mercado Pago.
@@ -18,8 +16,7 @@ const MP_API = 'https://api.mercadopago.com';
  * MP manda: x-signature: ts=<timestamp>,v1=<hmac>
  * El manifest a firmar es: id:<data.id>;request-id:<x-request-id>;ts:<ts>;
  * (los segmentos cuyo valor no llega se omiten por completo).
- */
-/**
+ *
  * `null` = firma valida. Si no, devuelve el motivo, que se loguea. Distinguir
  * "no vino firma" de "no coincide" importa: se arreglan distinto y desde
  * afuera los dos se veian igual.
@@ -61,33 +58,6 @@ function checkSignature(request: Request, dataId: string | null): string | null 
   );
 }
 
-async function mpFetch(path: string) {
-  const res = await fetch(`${MP_API}${path}`, {
-    headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) {
-    console.error('[mp-webhook] MP API error', path, res.status, await res.text().catch(() => ''));
-    return null;
-  }
-  return res.json();
-}
-
-/** Traduce el status de la preapproval de MP a nuestro subscription_status. */
-function mapStatus(mpStatus: string): 'active' | 'past_due' | 'canceled' | null {
-  switch (mpStatus) {
-    case 'authorized':
-      return 'active';
-    case 'paused':
-      return 'past_due';
-    case 'cancelled':
-      return 'canceled';
-    default:
-      // 'pending' u otros: todavia no hay nada que aplicar.
-      return null;
-  }
-}
-
 export async function POST(request: Request) {
   // Fallar cerrado: sin credenciales no procesamos nada.
   if (!MP_WEBHOOK_SECRET || !MP_ACCESS_TOKEN || !SERVICE_ROLE_KEY) {
@@ -102,76 +72,96 @@ export async function POST(request: Request) {
   const dataId: string | null =
     url.searchParams.get('data.id') || url.searchParams.get('id') || body?.data?.id || body?.id || null;
 
+  const topic: string =
+    body?.type || body?.topic || url.searchParams.get('type') || url.searchParams.get('topic') || '';
+
+  const admin = createAdminClient();
+
   const signatureError = checkSignature(request, dataId);
   if (signatureError) {
     console.warn('[mp-webhook] Firma invalida, notificacion descartada:', signatureError);
+    // Se registra: una firma que falla siempre suele ser el secreto mal
+    // copiado, y sin rastro no hay forma de notarlo desde afuera.
+    await logWebhookEvent(admin, {
+      topic,
+      mp_data_id: dataId,
+      outcome: 'invalid_signature',
+      detail: signatureError,
+    });
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
 
-  const topic: string = body?.type || body?.topic || url.searchParams.get('type') || url.searchParams.get('topic') || '';
-
   if (!dataId) {
     console.warn('[mp-webhook] Notificacion sin id', { topic });
+    await logWebhookEvent(admin, { topic, outcome: 'ignored', detail: 'notificacion sin id' });
     return NextResponse.json({ received: true });
   }
 
   // Resolver la preapproval. El body de MP NO trae external_reference:
   // hay que ir a buscarlo a la API con el id de la notificacion.
-  let preapproval: any = null;
+  let preapproval: Preapproval | null = null;
 
   if (topic === 'subscription_preapproval') {
-    preapproval = await mpFetch(`/preapproval/${dataId}`);
+    preapproval = await getPreapproval(dataId);
   } else if (topic === 'subscription_authorized_payment') {
     // Cobro recurrente: primero la cuota, de ahi salimos a la suscripcion.
-    const authorizedPayment = await mpFetch(`/authorized_payments/${dataId}`);
-    const preapprovalId = authorizedPayment?.preapproval_id;
-    if (preapprovalId) preapproval = await mpFetch(`/preapproval/${preapprovalId}`);
+    preapproval = await getPreapprovalFromAuthorizedPayment(dataId);
   } else {
     // Eventos que no nos interesan: 200 para que MP no reintente.
+    await logWebhookEvent(admin, {
+      topic,
+      mp_data_id: dataId,
+      outcome: 'ignored',
+      detail: 'topic fuera de alcance',
+    });
     return NextResponse.json({ received: true, ignored: topic });
   }
 
   if (!preapproval) {
+    await logWebhookEvent(admin, {
+      topic,
+      mp_data_id: dataId,
+      outcome: 'unresolved',
+      detail: 'no se pudo resolver la preapproval en la API de MP',
+    });
     return NextResponse.json({ received: true, resolved: false });
   }
 
-  const gymId: string | undefined = preapproval.external_reference;
-  const status = mapStatus(preapproval.status);
+  try {
+    const result = await applyPreapprovalToGym(admin, preapproval);
 
-  if (!gymId || !status) {
-    console.warn('[mp-webhook] Sin gym_id o status no accionable', {
-      gymId,
-      mpStatus: preapproval.status,
-    });
-    return NextResponse.json({ received: true, applied: false });
-  }
-
-  // Service role: el webhook no tiene sesion, y la RLS de `gyms` exige
-  // id = current_user_gym_id(). Con la anon key el UPDATE matchea 0 filas.
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const { data, error } = await supabase
-    .from('gyms')
-    .update({
-      subscription_status: status,
+    await logWebhookEvent(admin, {
+      topic,
+      mp_data_id: dataId,
       mp_preapproval_id: preapproval.id,
-      current_period_end: preapproval.next_payment_date ?? null,
-    })
-    .eq('id', gymId)
-    .select('id');
+      mp_status: preapproval.status,
+      gym_id: preapproval.external_reference ?? null,
+      applied_status: result.status,
+      outcome: result.applied ? 'applied' : 'ignored',
+      detail: result.detail,
+    });
 
-  if (error) {
-    console.error('[mp-webhook] Error actualizando el gym', error);
+    if (result.applied) {
+      console.log('[mp-webhook] Gym actualizado', {
+        gymId: preapproval.external_reference,
+        status: result.status,
+      });
+    }
+
+    return NextResponse.json({ received: true, applied: result.applied });
+  } catch (err: any) {
+    console.error('[mp-webhook] Error aplicando la notificacion:', err);
+    await logWebhookEvent(admin, {
+      topic,
+      mp_data_id: dataId,
+      mp_preapproval_id: preapproval.id,
+      mp_status: preapproval.status,
+      gym_id: preapproval.external_reference ?? null,
+      outcome: 'error',
+      detail: err?.message ?? String(err),
+    });
+    // 500 a proposito: que MP reintente, porque el cobro es real y todavia no
+    // quedo asentado.
     return NextResponse.json({ error: 'Database error' }, { status: 500 });
   }
-
-  if (!data || data.length === 0) {
-    console.warn('[mp-webhook] Ningun gym coincide con external_reference', gymId);
-    return NextResponse.json({ received: true, applied: false });
-  }
-
-  console.log('[mp-webhook] Gym actualizado', { gymId, status });
-  return NextResponse.json({ received: true, applied: true });
 }
